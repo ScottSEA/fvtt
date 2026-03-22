@@ -1,60 +1,71 @@
 /**
  * BLOODSHED BLADE RUNE INVOCATION MACRO
- *
- * This macro injects a "Spend Hit Die on Attack" button into attack roll messages
- * from the Bloodshed Blade weapon, allowing post-roll Hit Die expenditure.
- */
+*
+* This macro injects a "Spend Hit Die on Attack" button into attack roll messages
+* from the Bloodshed Blade weapon, allowing post-roll Hit Die expenditure.
+*/
 
 console.log("Bloodshed Blade: Macro starting execution");
 
 if (!game.bloodshedBladeHookRegistered) {
   console.log("Bloodshed Blade: Registering hook set");
-
+  
   Hooks.on("createChatMessage", (message, options, userId) => {
     console.log("Bloodshed Blade: createChatMessage fired", message.id, message.type, message.isRoll);
   });
-
+  
   Hooks.on("renderChatMessage", (message, html, data) => {
     console.log("Bloodshed Blade: renderChatMessage fired", message.id, message.type, message.isRoll);
     console.log("Bloodshed Blade: renderChatMessage full message", message);
     console.log("Bloodshed Blade: renderChatMessage html content", html.html());
-
+    
     const actor = message.actor || game.actors.get(message.speaker?.actor);
     const isRoll = message.isRoll || !!message.rolls?.length || !!message.flags?.dnd5e?.roll;
     if (!actor || !isRoll) {
       console.log("Bloodshed Blade: skip - not roll or no actor", { actor: !!actor, isRoll });
       return;
     }
-
+    
     const isAttackRoll = message.rolls?.some(r => r.options?.type === "attack") ||
-      message.flags?.dnd5e?.roll?.type === "attack" ||
-      html.text().toLowerCase().includes("attack");
+    message.flags?.dnd5e?.roll?.type === "attack" ||
+    html.text().toLowerCase().includes("attack");
     const hasName = !!(message.item?.name?.includes("Bloodshed Blade") ||
-      message.flavor?.includes("Bloodshed Blade") ||
-      message.flags?.dnd5e?.item?.name?.includes("Bloodshed Blade") ||
-      html.text().includes("Bloodshed Blade"));
+    message.flavor?.includes("Bloodshed Blade") ||
+    message.flags?.dnd5e?.item?.name?.includes("Bloodshed Blade") ||
+    html.text().includes("Bloodshed Blade"));
     const isBlade = isAttackRoll && hasName;
-
+    
     console.log("Bloodshed Blade: detection", { isAttackRoll, hasName, isBlade });
     if (!isBlade) return;
-
+    
     if (html.find("[data-action='bloodshed-spend-hd']").length) return;
-
+    
     const attackData = extractAttackRollData(message);
     if (!attackData) return;
-
+    
     const hdData = getAvailableHitDice(actor);
     const noHitDice = hdData.available <= 0;
-
+    
+    // Check if the Bloodshed Blade's Invoke Rune activity is expended
+    let runeExpended = false;
+    const activity = getInvokedRuneActivity(actor);
+    if (activity) {
+      const spent = parseInt(activity.uses?.spent || 0);
+      if (spent > 0) runeExpended = true;
+    }
+    
+    
     const button = createHitDieButton(
       message,
       attackData,
-      noHitDice,
-      noHitDice ? "No Hit Dice" : "Invoke Rune"
+      noHitDice || runeExpended,
+      noHitDice ? "No Hit Dice" 
+      : runeExpended ? "Rune Expended" 
+      : "Invoke Rune"
     );
     const cardButtons = html.find('.card-buttons');
     const messageContent = html.find('.message-content');
-
+    
     if (cardButtons.length) {
       cardButtons.append(button);
     } else if (messageContent.length) {
@@ -66,19 +77,21 @@ if (!game.bloodshedBladeHookRegistered) {
     } else {
       html.append(button);
     }
+  
+    ui.notifications.info('✓ Bloodshed Blade Rune Macro loaded. Attack with the blade to see the button!');
   });
-
+  
   $(document).on("click", "[data-action='bloodshed-spend-hd']", async function (e) {
     e.preventDefault();
     const messageId = $(this).data("messageId");
     const attackTotal = Number($(this).data("attackTotal"));
     const message = game.messages.get(messageId);
     if (!message) return;
-
+    
     const actor = message.actor ||
-      (message.speaker?.actor ? game.actors.get(message.speaker.actor) : null) ||
-      (message.speaker?.token ? canvas?.tokens?.get(message.speaker.token)?.actor : null);
-
+    (message.speaker?.actor ? game.actors.get(message.speaker.actor) : null) ||
+    (message.speaker?.token ? canvas?.tokens?.get(message.speaker.token)?.actor : null);
+    
     if (!actor) {
       ui.notifications.error("Bloodshed Blade: Unable to determine actor for this attack.");
       return;
@@ -90,7 +103,7 @@ if (!game.bloodshedBladeHookRegistered) {
       return;
     }
 
-    await spendHitDieAndRoll(actor, message, hdData.largestType, attackTotal);
+    await rollHitDie(actor, message, hdData.largestType, attackTotal);
   });
 
   game.bloodshedBladeHookRegistered = true;
@@ -142,33 +155,34 @@ function getAvailableHitDice(actor) {
   return { available: totalAvailable, largestType };
 }
 
-async function spendHitDieAndRoll(actor, message, hdType, originalAttackTotal) {
+function getInvokedRuneActivity(actor) {
+    const item = actor.items?.getName?.("Bloodshed Blade");
+    if (!item) { return {}; }
+ 
+    const activities = item.system?.activities || {};
+    const activity = activities.get("PXjk4FsU2X7ClsFN");
+    
+    return activity;
+}
+
+async function rollHitDie(actor, message, hdType, originalAttackTotal) {
   try {
     const roll = new Roll(`1${hdType}`);
     await roll.evaluate({ async: true });
     
     const hdResult = roll.total;
 
-    // Find the class with the matching denomination and increment spent
-    const classes = actor.classes || {};
-    for (const [key, cls] of Object.entries(classes)) {
-      if (cls.system?.hd?.denomination === hdType) {
-        const currentSpent = cls.system.hd.spent || 0;
-        await cls.update({ "system.hd.spent": currentSpent + 1 });
-        break; // Assume only one class has this denomination, or update the first
-      }
-    }
-
-    const newTotal = originalAttackTotal + hdResult;
+   const newTotal = originalAttackTotal + hdResult;
     
     await roll.toMessage({
       author: game.user.id,
       speaker: ChatMessage.getSpeaker({ actor }),
       content: `<div style="border-left: 4px solid #8B0000; padding-left: 10px; margin: 10px 0;">` +
       `<p><strong style="color: #8B0000;">Rune Invoked</strong></p>` +
-      `<p>Spent Hit Die Roll: <strong>${hdResult}</strong> (rolled 1${hdType})</p>` +
       `<p>Original Attack Roll: <strong>${originalAttackTotal}</strong></p>` +
-      `<p style="font-size: 1.1em; font-weight: bold;">New Attack Total: <strong style="color: #8B0000;">${newTotal}</strong></p>` +
+      `<p>+ Spent Hit Die Roll: <strong>${hdResult}</strong> (1${hdType})</p>` +
+      `<p style="font-size: 1.1em; font-weight: bold;">New Attack Total:</p>` + 
+      `<p style="color: #8B0000;font-size: 2em;">${newTotal}</p>` +
       `</div>`,
       type: CONST.CHAT_MESSAGE_TYPES.OTHER
     });
@@ -177,7 +191,35 @@ async function spendHitDieAndRoll(actor, message, hdType, originalAttackTotal) {
   } catch (err) {
     console.error('Bloodshed Blade Rune Error', err);
     ui.notifications.error('Error invoking rune. Check console.');
+    return;
+  } 
+
+  await markRuneAsExpended(actor);
+  await markHitDieExpended(actor);
+}
+
+async function markRuneAsExpended(actor) {
+  const activity = getInvokedRuneActivity(actor);
+  if (activity) {
+      const path = `system.activities.PXjk4FsU2X7ClsFN.uses.spent`;
+      const currentSpent = activity.uses?.spent || 0;
+      const item = actor.items?.getName?.("Bloodshed Blade");
+      await item.update({ [path]: currentSpent + 1 });
   }
 }
 
-ui.notifications.info('✓ Bloodshed Blade Rune Macro loaded. Attack with the blade to see the button!');
+async function markHitDieExpended(actor) {
+  const hdData = getAvailableHitDice(actor);
+  if (hdData.available > 0) {
+    const classes = actor.classes || {};
+    for (const [key, cls] of Object.entries(classes)) {
+      const level = cls.system?.levels || 0;
+      const spent = cls.system?.hd?.spent || 0;
+      if (level - spent > 0) {
+        const path = `system.classes.${key}.hd.spent`;
+        await actor.update({ [path]: spent + 1 });
+        break;
+      }
+    }
+  }
+}

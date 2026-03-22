@@ -127,7 +127,9 @@ function createHitDieButton(message, attackData, disabled = false, buttonText = 
 
 function getCurrentDateString() {
   const worldTime = game.time?.worldTime;
-  const date = worldTime ? new Date(worldTime * 1000) : new Date();
+  // Adjust for dawn reset: subtract 6 hours (21600 seconds) to shift day boundary to 6 AM
+  const adjustedTime = worldTime ? worldTime - 21600 : Date.now() / 1000 - 21600;
+  const date = new Date(adjustedTime * 1000);
   return date.toISOString().slice(0, 10);
 }
 

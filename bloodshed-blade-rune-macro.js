@@ -45,13 +45,12 @@ if (!game.bloodshedBladeHookRegistered) {
 
     const hdData = getAvailableHitDice(actor);
     const noHitDice = hdData.available <= 0;
-    const runeUsed = hasUsedRune(actor);
 
     const button = createHitDieButton(
       message,
       attackData,
-      noHitDice || runeUsed,
-      noHitDice ? "No Hit Dice" : runeUsed ? "Can't Invoke Rune Until Dawn" : "Invoke Rune"
+      noHitDice,
+      noHitDice ? "No Hit Dice" : "Invoke Rune"
     );
     const cardButtons = html.find('.card-buttons');
     const messageContent = html.find('.message-content');
@@ -63,8 +62,6 @@ if (!game.bloodshedBladeHookRegistered) {
       const diceRoll = messageContent.find(".dice-roll");
       if (diceRoll.length) {
         diceRoll.after(button);
-      } else {
-        messageContent.append(button);
       }
     } else {
       html.append(button);
@@ -84,12 +81,6 @@ if (!game.bloodshedBladeHookRegistered) {
 
     if (!actor) {
       ui.notifications.error("Bloodshed Blade: Unable to determine actor for this attack.");
-      return;
-    }
-
-    const runeUsed = hasUsedRune(actor);
-    if (runeUsed) {
-      ui.notifications.warn("Bloodshed Blade: Rune already invoked today (next dawn). ");
       return;
     }
 
@@ -125,24 +116,6 @@ function createHitDieButton(message, attackData, disabled = false, buttonText = 
     `</button>`;
 }
 
-function getCurrentDateString() {
-  const worldTime = game.time?.worldTime;
-  // Adjust for dawn reset: subtract 6 hours (21600 seconds) to shift day boundary to 6 AM
-  const adjustedTime = worldTime ? worldTime - 21600 : Date.now() / 1000 - 21600;
-  const date = new Date(adjustedTime * 1000);
-  return date.toISOString().slice(0, 10);
-}
-
-function hasUsedRune(actor) {
-  const lastUsed = actor.getFlag("dnd5e", "bloodshedBladeRuneLastUsed");
-  if (!lastUsed) return false;
-  return lastUsed === getCurrentDateString();
-}
-
-function markRuneUsed(actor) {
-  return actor.setFlag("dnd5e", "bloodshedBladeRuneLastUsed", getCurrentDateString());
-}
-
 function getAvailableHitDice(actor) {
   const classes = actor.classes || {};
   let totalAvailable = 0;
@@ -173,6 +146,7 @@ async function spendHitDieAndRoll(actor, message, hdType, originalAttackTotal) {
   try {
     const roll = new Roll(`1${hdType}`);
     await roll.evaluate({ async: true });
+    
     const hdResult = roll.total;
 
     // Find the class with the matching denomination and increment spent
@@ -186,16 +160,16 @@ async function spendHitDieAndRoll(actor, message, hdType, originalAttackTotal) {
     }
 
     const newTotal = originalAttackTotal + hdResult;
-    await markRuneUsed(actor);
-    await ChatMessage.create({
+    
+    await roll.toMessage({
       author: game.user.id,
       speaker: ChatMessage.getSpeaker({ actor }),
       content: `<div style="border-left: 4px solid #8B0000; padding-left: 10px; margin: 10px 0;">` +
-        `<p><strong style="color: #8B0000;">Bloodshed Blade - Rune Invoked</strong></p>` +
-        `<p>Spent Hit Die: <strong>${hdResult}</strong> (rolled 1${hdType})</p>` +
-        `<p>Original Attack Roll: <strong>${originalAttackTotal}</strong></p>` +
-        `<p style="font-size: 1.1em; font-weight: bold;">New Attack Total: <strong style="color: #8B0000;">${newTotal}</strong></p>` +
-        `</div>`,
+      `<p><strong style="color: #8B0000;">Rune Invoked</strong></p>` +
+      `<p>Spent Hit Die Roll: <strong>${hdResult}</strong> (rolled 1${hdType})</p>` +
+      `<p>Original Attack Roll: <strong>${originalAttackTotal}</strong></p>` +
+      `<p style="font-size: 1.1em; font-weight: bold;">New Attack Total: <strong style="color: #8B0000;">${newTotal}</strong></p>` +
+      `</div>`,
       type: CONST.CHAT_MESSAGE_TYPES.OTHER
     });
 

@@ -41,7 +41,7 @@ function onRenderChatMessage(message, html) {
   const ctx = analyzeForReroll(message, el);
   if (!ctx) return;
 
-  const buttonHtml = createRerollButton(message, ctx.usedThisTurn);
+  const buttonHtml = createRerollButton(message, ctx);
   injectRerollButton(el, buttonHtml);
 }
 
@@ -57,11 +57,10 @@ async function handleReroll(event, btn) {
   if (!intent) return;
 
   btn.disabled = true;
-  btn.innerHTML = `<i class="fas fa-dice"></i> Rerolled`;
+  btn.innerHTML = `<i class="fas fa-dice"></i> Rerolling...`;
 
   const reroll = await executeReroll(intent.originalRoll, intent.actor);
-  const content = createRerollResultContent(intent.originalTotal, reroll.total);
-  await sendRerollMessage(intent.actor, reroll, content);
+  await updateOriginalMessage(intent.message, reroll, intent.originalTotal);
   markRerollUsed();
 }
 
@@ -144,9 +143,13 @@ function analyzeForReroll(message, el) {
   if (!isMeleeDamageMessage(message, actor)) return null;
   if (!actorHasEquippedBib(actor)) return null;
 
+  const rerolled = !!message.flags?.world?.butchersBibRerolled;
+
   return {
     actor,
-    usedThisTurn: hasUsedRerollThisTurn(),
+    rerolled,
+    originalTotal: message.flags?.world?.butchersBibOriginalTotal ?? null,
+    usedThisTurn: rerolled || hasUsedRerollThisTurn(),
   };
 }
 
@@ -194,30 +197,25 @@ function actorHasEquippedBib(actor) {
 
 // ─── HTML Builders ───────────────────────────────────────────────────────────
 
-function createRerollButton(message, usedThisTurn = false) {
+function createRerollButton(message, ctx) {
+  const { usedThisTurn, rerolled, originalTotal } = ctx;
   const disabled = usedThisTurn ? "disabled" : "";
-  const label = usedThisTurn ? "Reroll Used" : "Reroll Damage (Butcher's Bib)";
-  const title = usedThisTurn
-    ? "Already used this turn"
-    : "Reroll the weapon's damage dice — you must keep the second result.";
+  let label, title;
+
+  if (rerolled) {
+    label = `Rerolled (was ${originalTotal})`;
+    title = `Damage was rerolled via Butcher's Bib. Original total: ${originalTotal}.`;
+  } else if (usedThisTurn) {
+    label = "Reroll Used";
+    title = "Already used this turn";
+  } else {
+    label = "Reroll Damage (Butcher's Bib)";
+    title = "Reroll the weapon's damage dice — you must keep the second result.";
+  }
 
   return `<button type="button" class="btn btn-sm butchers-bib-reroll-btn" ${disabled} ` +
     `data-action="butchers-bib-reroll" data-message-id="${message.id}" title="${title}">` +
     `<i class="fas fa-dice"></i> ${label}</button>`;
-}
-
-function createRerollResultContent(originalTotal, newTotal) {
-  const delta = newTotal - originalTotal;
-  const deltaSign = delta >= 0 ? `+${delta}` : `${delta}`;
-  const indicator = newTotal > originalTotal ? "📈" : newTotal < originalTotal ? "📉" : "➡️";
-
-  return `<div class="butchers-bib-reroll-card">` +
-    `<p><strong class="butchers-bib-title">Butcher's Bib — Damage Reroll</strong></p>` +
-    `<p>Original Damage: <strong>${originalTotal}</strong></p>` +
-    `<p>Rerolled Damage: <strong>${newTotal}</strong> (${deltaSign}) ${indicator}</p>` +
-    `<p class="butchers-bib-total-label">New Damage Total:</p>` +
-    `<p class="butchers-bib-total">${newTotal}</p>` +
-    `</div>`;
 }
 
 function injectRerollButton(el, buttonHtml) {
@@ -265,13 +263,16 @@ function markRerollUsed() {
   };
 }
 
-// ─── Chat Message ────────────────────────────────────────────────────────────
+// ─── Message Update ──────────────────────────────────────────────────────────
 
-async function sendRerollMessage(actor, roll, content) {
-  await roll.toMessage({
-    author: game.user.id,
-    speaker: ChatMessage.getSpeaker({ actor }),
-    content,
-    style: (CONST.CHAT_MESSAGE_STYLES ?? CONST.CHAT_MESSAGE_TYPES).OTHER,
+async function updateOriginalMessage(message, newRoll, originalTotal) {
+  await message.update({
+    rolls: [newRoll.toJSON()],
+    flags: {
+      world: {
+        butchersBibRerolled: true,
+        butchersBibOriginalTotal: originalTotal,
+      },
+    },
   });
 }

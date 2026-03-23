@@ -291,24 +291,18 @@ function extractAttackRollData(message) {
 
 function createHitDieButton(message, attackData, disabled = false, buttonText = "Invoke Rune") {
   const isDisabledAttr = disabled ? "disabled" : "";
-  const dataAction = disabled ? "" : `data-action="bloodshed-spend-hd"`;
-  const dataMessageId = disabled ? "" : `data-message-id="${message.id}"`;
-  const dataAttackTotal = disabled ? "" : `data-attack-total="${attackData.total}"`;
   const title = disabled ? buttonText : "Invoke the blade's rune to add a Hit Die to your attack roll";
 
-  return `<button type="button" class="btn btn-sm bloodshed-blade-invoke-btn" ${isDisabledAttr} ${dataAction} ${dataMessageId} ${dataAttackTotal} title="${title}">` +
+  return `<button type="button" class="btn btn-sm bloodshed-blade-invoke-btn" ${isDisabledAttr} data-action="bloodshed-spend-hd" data-message-id="${message.id}" data-attack-total="${attackData.total}" title="${title}">` +
     `<i class="fas fa-dice-d20"></i> ${buttonText}` +
     `</button>`;
 }
 
 function createUndoButton(message, attackData, runeExpended = false) {
   const isDisabledAttr = runeExpended ? "" : "disabled";
-  const dataAction = runeExpended ? `data-action="bloodshed-undo-hd"` : "";
-  const dataMessageId = runeExpended ? `data-message-id="${message.id}"` : "";
-  const dataAttackTotal = runeExpended ? `data-attack-total="${attackData.total}"` : "";
   const title = "Undo rune invocation and restore hit die";
 
-  return `<button type="button" class="btn btn-sm bloodshed-blade-undo-btn" ${isDisabledAttr} ${dataAction} ${dataMessageId} ${dataAttackTotal} title="${title}">` +
+  return `<button type="button" class="btn btn-sm bloodshed-blade-undo-btn" ${isDisabledAttr} data-action="bloodshed-undo-hd" data-message-id="${message.id}" data-attack-total="${attackData.total}" title="${title}">` +
     `<i class="fas fa-undo"></i>` +
     `</button>`;
 }

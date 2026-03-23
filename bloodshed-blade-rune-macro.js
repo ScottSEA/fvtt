@@ -10,18 +10,29 @@ const BLOODSHED_BLADE_ITEM_NAME = "Bloodshed Blade";
 const BLOODSHED_BLADE_ACTIVITY_ID = "PXjk4FsU2X7ClsFN";
 const BLOODSHED_HOOK_FLAG = "bloodshedBladeHookRegistered";
 
+// --- Tear down previous registration so re-running the macro picks up changes ---
+if (game[BLOODSHED_HOOK_FLAG]) {
+  console.log("Bloodshed Blade: Cleaning up previous registration");
+  const prev = game[BLOODSHED_HOOK_FLAG];
+  if (prev.createHookId != null) Hooks.off("createChatMessage", prev.createHookId);
+  if (prev.renderHookId != null) Hooks.off("renderChatMessage", prev.renderHookId);
+  if (prev.clickHandler) document.removeEventListener("click", prev.clickHandler);
+  const oldStyle = document.getElementById("bloodshed-blade-macro-style");
+  if (oldStyle) oldStyle.remove();
+}
+
 ensureBloodshedBladeStyles();
 
 console.log("Bloodshed Blade: Macro starting execution");
 
-if (!game[BLOODSHED_HOOK_FLAG]) {
+{
   console.log("Bloodshed Blade: Registering hook set");
 
-  Hooks.on("createChatMessage", (message) => {
+  const createHookId = Hooks.on("createChatMessage", (message) => {
     console.log("Bloodshed Blade: createChatMessage fired", message.id, message.type, message.isRoll);
   });
 
-  Hooks.on("renderChatMessage", (message, html) => {
+  const renderHookId = Hooks.on("renderChatMessage", (message, html) => {
     const el = html instanceof HTMLElement ? html : html[0] ?? html;
     console.log("Bloodshed Blade: renderChatMessage fired", message.id, message.type, message.isRoll);
 
@@ -68,7 +79,7 @@ if (!game[BLOODSHED_HOOK_FLAG]) {
     el.insertAdjacentHTML("beforeend", buttonGroup);
   });
 
-  document.addEventListener("click", async (event) => {
+  const clickHandler = async (event) => {
     const spendBtn = event.target.closest("[data-action='bloodshed-spend-hd']");
     const undoBtn = event.target.closest("[data-action='bloodshed-undo-hd']");
     const gustoBtn = event.target.closest("[data-action='bloodshed-gusto-damage']");
@@ -170,9 +181,11 @@ if (!game[BLOODSHED_HOOK_FLAG]) {
         type: CONST.CHAT_MESSAGE_TYPES.OTHER
       });
     }
-  });
+  };
 
-  game[BLOODSHED_HOOK_FLAG] = true;
+  document.addEventListener("click", clickHandler);
+
+  game[BLOODSHED_HOOK_FLAG] = { createHookId, renderHookId, clickHandler };
 }
 
 function ensureBloodshedBladeStyles() {

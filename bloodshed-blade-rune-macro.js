@@ -451,7 +451,7 @@ async function rollHitDie(actor, message, hdType, originalAttackTotal) {
   }
 
   await markRuneAsExpended(actor);
-  await markHitDieExpended(actor);
+  await markHitDieExpended(actor, hdType);
 }
 
 async function markRuneAsExpended(actor) {
@@ -480,30 +480,40 @@ async function unmarkRuneAsExpended(actor) {
   }
 }
 
-async function markHitDieExpended(actor) {
-  const hdData = getAvailableHitDice(actor);
-  if (hdData.available <= 0) return;
-
+async function markHitDieExpended(actor, hdType) {
   const classes = actor.classes || {};
   for (const [key, cls] of Object.entries(classes)) {
     const level = cls.system?.levels || 0;
     const spent = cls.system?.hd?.spent || 0;
-    if (level - spent <= 0) continue;
+    const denomination = cls.system?.hd?.denomination;
+    if (denomination !== hdType || level - spent <= 0) continue;
 
-    const path = `system.classes.${key}.hd.spent`;
-    await actor.update({ [path]: spent + 1 });
-    break;
+    await cls.update({ "system.hd.spent": spent + 1 });
+    return;
   }
 }
 
 async function unmarkHitDieExpended(actor) {
   const classes = actor.classes || {};
+  let target = null;
+  let targetValue = 0;
+
   for (const [key, cls] of Object.entries(classes)) {
     const spent = cls.system?.hd?.spent || 0;
     if (spent <= 0) continue;
 
-    const path = `system.classes.${key}.hd.spent`;
-    await actor.update({ [path]: spent - 1 });
-    break;
+    const denomination = cls.system?.hd?.denomination;
+    if (!denomination) continue;
+
+    const dieValue = parseInt(denomination.slice(1), 10);
+    if (dieValue > targetValue) {
+      targetValue = dieValue;
+      target = cls;
+    }
+  }
+
+  if (target) {
+    const spent = target.system?.hd?.spent || 0;
+    await target.update({ "system.hd.spent": spent - 1 });
   }
 }

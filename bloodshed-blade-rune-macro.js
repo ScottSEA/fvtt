@@ -77,12 +77,13 @@ if (!game.bloodshedBladeHookRegistered) {
     } else {
       html.append(button);
     }
-  
-    ui.notifications.info('✓ Bloodshed Blade Rune Macro loaded. Attack with the blade to see the button!');
   });
   
   $(document).on("click", "[data-action='bloodshed-spend-hd']", async function (e) {
     e.preventDefault();
+    // Disable the button immediately after click
+    this.disabled = true;
+
     const messageId = $(this).data("messageId");
     const attackTotal = Number($(this).data("attackTotal"));
     const message = game.messages.get(messageId);

@@ -89,7 +89,7 @@ console.log("Bloodshed Blade: Macro starting execution");
 
       const messageId = spendBtn.dataset.messageId;
       const attackTotal = Number(spendBtn.dataset.attackTotal);
-      const isCritical = spendBtn.dataset.isCritical === "true";
+      const isCritical = true; // spendBtn.dataset.isCritical === "true";
       const message = game.messages.get(messageId);
       if (!message) return;
 
@@ -173,6 +173,9 @@ console.log("Bloodshed Blade: Macro starting execution");
         content += createResultTotal(damageTotal, "bloodshed-blade-gusto-total");
       }
       content += `</div>`;
+      if (isCritical) {
+        content += `<p class="bloodshed-blade-crit-smash">${damageTotal}</p>`;
+      }
 
       await gustoRoll.toMessage({
         author: game.user.id,
@@ -266,6 +269,69 @@ function ensureBloodshedBladeStyles() {
     .bloodshed-blade-total-label {
       font-size: 1.1em;
       font-weight: bold;
+    }
+
+    .bloodshed-blade-crit-smash {
+      animation: crit-smash 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+                 crit-fade 0.8s ease-out 4.0s forwards;
+      transform-origin: center center;
+      position: relative;
+      z-index: 100;
+      font-size: 7em !important;
+      font-weight: bold;
+      color: #8b0000;
+      line-height: 1;
+      height: 0;
+      overflow: visible;
+      margin: 0;
+      pointer-events: none;
+      text-align: center;
+      display: block;
+    }
+
+    @keyframes crit-smash {
+      0% {
+        transform: scale(6) rotate(-40deg) translate(60px, -300px);
+        opacity: 0;
+        color: #ff0000;
+        text-shadow: 0 0 0 transparent;
+      }
+      30% {
+        opacity: 1;
+        color: #ff0000;
+      }
+      50% {
+        transform: scale(1.2) rotate(-30deg) translate(60px, -120px);
+        color: #cc0000;
+        text-shadow:
+          0 0 40px rgba(255, 0, 0, 0.9),
+          0 0 80px rgba(139, 0, 0, 0.6),
+          0 4px 8px rgba(0, 0, 0, 0.5);
+      }
+      65% {
+        transform: scale(1.3) rotate(-32deg) translate(60px, -125px);
+      }
+      80% {
+        transform: scale(1.15) rotate(-29deg) translate(60px, -118px);
+      }
+      100% {
+        transform: scale(1.2) rotate(-30deg) translate(60px, -120px);
+        opacity: 1;
+        color: #8b0000;
+        text-shadow:
+          0 0 20px rgba(139, 0, 0, 0.6),
+          0 0 40px rgba(139, 0, 0, 0.3),
+          0 4px 6px rgba(0, 0, 0, 0.4);
+      }
+    }
+
+    @keyframes crit-fade {
+      0% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+      }
     }
   `;
   document.head.appendChild(style);

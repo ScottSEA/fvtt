@@ -128,27 +128,6 @@ function ensureButchersBibStyles() {
       background-color: #6b3a2e;
       color: white;
     }
-
-    .butchers-bib-reroll-card {
-      padding-left: 10px;
-      margin: 10px 0;
-      border-left: 4px solid #4a0e0e;
-    }
-
-    .butchers-bib-title {
-      color: #4a0e0e;
-    }
-
-    .butchers-bib-total {
-      color: #4a0e0e;
-      font-size: 2em;
-      font-weight: bold;
-    }
-
-    .butchers-bib-total-label {
-      font-size: 1.1em;
-      font-weight: bold;
-    }
   `;
   document.head.appendChild(style);
 }

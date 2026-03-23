@@ -1,7 +1,7 @@
 /**
  * CUDDLY STRIXHAVEN MASCOT MACRO
  *
- * Hooks into the dnd5e saving throw dialog to remind the player they can
+ * Injects a reminder into the dnd5e saving throw dialog so the player can
  * choose advantage on saves against the Frightened condition.
  *
  * RAW: "When you make a saving throw to avoid or end the frightened condition
@@ -26,31 +26,54 @@ function teardown() {
   const prev = game[MASCOT_HOOK_FLAG];
   if (prev.preRollHookId != null) Hooks.off("dnd5e.preRollAbilitySave", prev.preRollHookId);
   if (prev.rollHookId != null) Hooks.off("dnd5e.rollAbilitySave", prev.rollHookId);
+  if (prev.renderHookId != null) Hooks.off("renderDialog", prev.renderHookId);
 }
 
 function register() {
   const preRollHookId = Hooks.on("dnd5e.preRollAbilitySave", onPreRollAbilitySave);
   const rollHookId = Hooks.on("dnd5e.rollAbilitySave", onRollAbilitySave);
-  game[MASCOT_HOOK_FLAG] = { preRollHookId, rollHookId };
+  const renderHookId = Hooks.on("renderDialog", onRenderDialog);
+  game[MASCOT_HOOK_FLAG] = { preRollHookId, rollHookId, renderHookId };
 }
 
-// ─── Pre-Roll Hook: Reminder ─────────────────────────────────────────────────
+// ─── Pre-Roll Hook: Flag for Dialog Injection ────────────────────────────────
 
 function onPreRollAbilitySave(actor, config, abilityId) {
   const mascot = getEquippedMascot(actor);
   if (!mascot) return;
 
-  const uses = getMascotUsesRemaining(mascot);
-  if (uses <= 0) {
-    ui.notifications.info(
-      `🧸 Strixhaven Mascot equipped — no uses remaining (resets on long rest)`
-    );
-    return;
-  }
+  game._strixhavenMascotPending = {
+    hasUses: getMascotUsesRemaining(mascot) > 0,
+  };
+}
 
-  ui.notifications.info(
-    `🧸 Strixhaven Mascot equipped — choose Advantage if this save is vs Frightened`
-  );
+// ─── Dialog Injection ────────────────────────────────────────────────────────
+
+function onRenderDialog(app, html) {
+  const pending = game._strixhavenMascotPending;
+  if (!pending) return;
+
+  const el = html instanceof HTMLElement ? html : html[0] ?? html;
+  const buttons = el.querySelector(".dialog-buttons");
+  if (!buttons) return;
+
+  const advButton = buttons.querySelector("[data-button='advantage']");
+  if (!advButton) return;
+
+  delete game._strixhavenMascotPending;
+
+  const message = pending.hasUses
+    ? "🧸 Strixhaven Mascot equipped — choose Advantage if this save is vs Frightened"
+    : "🧸 Strixhaven Mascot — no uses remaining (resets on long rest)";
+  const bgColor = pending.hasUses ? "#2e6b30" : "#6b3a2e";
+
+  const reminder = document.createElement("div");
+  reminder.style.cssText =
+    `background:${bgColor}; color:white; padding:6px 10px; border-radius:4px; ` +
+    `margin:8px 0; text-align:center; font-size:12px;`;
+  reminder.textContent = message;
+
+  buttons.insertAdjacentElement("beforebegin", reminder);
 }
 
 // ─── Post-Roll Hook: Consume Use ─────────────────────────────────────────────
@@ -65,12 +88,10 @@ function onRollAbilitySave(actor, roll, abilityId) {
     roll.options?.advantage === true;
   if (!wasAdvantage) return;
 
-  // Player chose advantage — check if it succeeded (met or beat DC)
-  // We can't reliably know the DC, so we prompt the player to confirm usage
-  confirmMascotUsage(actor, mascot, roll);
+  confirmMascotUsage(actor, mascot);
 }
 
-async function confirmMascotUsage(actor, mascot, roll) {
+async function confirmMascotUsage(actor, mascot) {
   const confirmed = await Dialog.confirm({
     title: "Cuddly Strixhaven Mascot",
     content:

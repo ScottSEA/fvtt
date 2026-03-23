@@ -2,7 +2,7 @@
  * BLOODSHED BLADE RUNE INVOCATION MACRO
  *
  * Injects an "Invoke Rune" button into Bloodshed Blade attack roll messages,
- * allows undoing the rune expenditure, and adds an "Attack with Gusto!"
+ * allows undoing the rune expenditure, and adds an "Attack with Hit Dice"
  * damage button to the rune result message.
  */
 
@@ -145,14 +145,15 @@ if (!game[BLOODSHED_HOOK_FLAG]) {
       const isCritical = true; //gustoBtn.dataset.isCritical === "true";
       const gustoRollData = await buildGustoRollData(actor, blade, isCritical);
       if (!gustoRollData.roll) {
-        ui.notifications.error("Bloodshed Blade: Unable to build the Gusto damage roll.");
+        ui.notifications.error("Bloodshed Blade: Unable to build the damage roll.");
         return;
       }
 
       const { roll: gustoRoll, prof, hdType, displayFormula } = gustoRollData;
       const damageTotal = gustoRoll.total;
 
-      let content = createResultCardStart("bloodshed-blade-gusto-card", "Fuck 'Em Up!");
+      const cardTitle = isCritical ? "CRITICAL with Hit Dice" : "Attack with Hit Dice";
+      let content = createResultCardStart("bloodshed-blade-gusto-card", cardTitle);
       if (displayFormula) {
         content += `<p>Formula: <strong>${displayFormula}</strong></p>`;
       }
@@ -317,10 +318,11 @@ function createGustoButtonForOutput(actor, isCritical = false) {
   const dataAction = `data-action="bloodshed-gusto-damage"`;
   const dataActorId = actor.id ? `data-actor-id="${actor.id}"` : "";
   const dataIsCritical = `data-is-critical="${isCritical}"`;
-  const title = "Attack with Gusto! Roll damage + proficiency hit dice.";
+  const label = isCritical ? "CRITICAL with Hit Dice" : "Attack with Hit Dice";
+  const title = `${label}! Roll damage + proficiency hit dice.`;
 
-  return `<button type="button" class="btn btn-sm bloodshed-blade-gusto-btn" ${dataAction} ${dataActorId} ${dataIsCritical} title="${title}">` +
-    `<i class="fas fa-fist-raised"></i> Attack with Gusto!` +
+  return `<button type="button" class="btn btn-sm bloodshed-blade-gusto-btn" ${dataAction} ${dataActorId} ${dataIsCritical} title="${title}">`+
+    `<i class="fas fa-fist-raised"></i> ${label}` +
     `</button>`;
 }
 
@@ -369,21 +371,17 @@ async function buildGustoRollData(actor, blade, isCritical = false) {
   const diceDenom = baseDamage.denomination;
 
   let formula;
-  let displayFormula;
 
   if (isCritical) {
     formula = `${diceNum}d${diceDenom} + ${diceNum}d${diceDenom}`;
-    displayFormula = `${diceNum}d${diceDenom} (max) + ${diceNum}d${diceDenom}`;
   } else {
     formula = `${diceNum}d${diceDenom}`;
-    displayFormula = `${diceNum}d${diceDenom}`;
   }
 
   const bonus = `${baseDamage.bonus || ""}`.trim();
   const conMod = actor.system?.abilities?.con?.mod ?? actor.getRollData?.()?.abilities?.con?.mod ?? 0;
   if (bonus) {
     formula += /^[+\-]/.test(bonus) ? ` ${bonus}` : ` + ${bonus}`;
-    displayFormula += ` + ${conMod} (con)`;
   }
 
   const prof = actor.system?.attributes?.prof || 2;
@@ -392,10 +390,8 @@ async function buildGustoRollData(actor, blade, isCritical = false) {
   if (prof > 0 && hdType) {
     if (isCritical) {
       formula += ` + ${prof}${hdType} + ${prof}${hdType}`;
-      displayFormula += ` + ${prof}${hdType} (max) + ${prof}${hdType}`;
     } else {
       formula += ` + ${prof}${hdType}`;
-      displayFormula += ` + ${prof}${hdType} (HD)`;
     }
   }
 
@@ -419,6 +415,41 @@ async function buildGustoRollData(actor, blade, isCritical = false) {
       term._total = newTermTotal;
       roll._total = roll._total - originalTermTotal + newTermTotal;
     }
+  }
+
+  // Build displayFormula from actual rolled/maxed values
+  let displayFormula;
+  const diceTerms = roll.terms.filter(t => t.faces && t.results);
+
+  if (isCritical) {
+    // diceTerms: [0] weapon max, [1] weapon roll, [2] HD max (if present), [3] HD roll (if present)
+    const weaponMax = diceTerms[0];
+    const weaponRoll = diceTerms[1];
+    const parts = [];
+    parts.push(`${weaponMax.number}d${weaponMax.faces} MAX (${weaponMax._total ?? weaponMax.total})`);
+    if (diceTerms.length > 2) {
+      const hdMax = diceTerms[2];
+      parts.push(`${hdMax.number}${hdType} HD MAX (${hdMax._total ?? hdMax.total})`);
+    }
+    parts.push(`${weaponRoll.number}d${weaponRoll.faces} (${weaponRoll._total ?? weaponRoll.total})`);
+    if (diceTerms.length > 3) {
+      const hdRoll = diceTerms[3];
+      parts.push(`${hdRoll.number}${hdType} HD (${hdRoll._total ?? hdRoll.total})`);
+    }
+    if (bonus) {
+      parts.push(`${conMod} (CON)`);
+    }
+    displayFormula = parts.join(" + ");
+  } else {
+    const parts = [];
+    parts.push(`${diceTerms[0].number}d${diceTerms[0].faces} (${diceTerms[0]._total ?? diceTerms[0].total})`);
+    if (diceTerms.length > 1) {
+      parts.push(`${diceTerms[1].number}${hdType} HD (${diceTerms[1]._total ?? diceTerms[1].total})`);
+    }
+    if (bonus) {
+      parts.push(`${conMod} (CON)`);
+    }
+    displayFormula = parts.join(" + ");
   }
 
   return { roll, prof, hdType, displayFormula };

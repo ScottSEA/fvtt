@@ -114,6 +114,11 @@ function ensureButchersBibStyles() {
       color: white;
     }
 
+    .butchers-bib-rerolled-up:disabled,
+    .butchers-bib-rerolled-down:disabled {
+      cursor: default;
+    }
+
     .butchers-bib-rerolled-up:disabled {
       background-color: #2e6b30;
       color: white;

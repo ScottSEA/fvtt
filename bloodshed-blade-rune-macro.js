@@ -142,7 +142,7 @@ if (!game[BLOODSHED_HOOK_FLAG]) {
         return;
       }
 
-      const isCritical = gustoBtn.dataset.isCritical === "true";
+      const isCritical = true; //gustoBtn.dataset.isCritical === "true";
       const gustoRollData = await buildGustoRollData(actor, blade, isCritical);
       if (!gustoRollData.roll) {
         ui.notifications.error("Bloodshed Blade: Unable to build the Gusto damage roll.");
@@ -390,26 +390,33 @@ async function buildGustoRollData(actor, blade, isCritical = false) {
   const hdData = getAvailableHitDice(actor);
   const hdType = hdData.largestType || null;
   if (prof > 0 && hdType) {
-    formula += ` + ${prof}${hdType}`;
-    displayFormula += ` + ${prof}${hdType} (HD)`;
+    if (isCritical) {
+      formula += ` + ${prof}${hdType} + ${prof}${hdType}`;
+      displayFormula += ` + ${prof}${hdType} (max) + ${prof}${hdType}`;
+    } else {
+      formula += ` + ${prof}${hdType}`;
+      displayFormula += ` + ${prof}${hdType} (HD)`;
+    }
   }
 
   const rollData = actor.getRollData ? actor.getRollData() : {};
   const roll = new Roll(formula, rollData);
   await roll.evaluate({ async: true });
 
-  // Max Criticals: force the first dice group to show max face values
+  // Max Criticals: force every other dice group to max (the "max" copy of each pair)
   if (isCritical) {
-    const maxTerm = roll.terms[0];
-    if (maxTerm?.faces && maxTerm?.results) {
-      const originalTermTotal = maxTerm.total;
-      for (const r of maxTerm.results) {
-        if (r.active) r.result = maxTerm.faces;
+    const diceTerms = roll.terms.filter(t => t.faces && t.results);
+    // diceTerms: [0] weapon max, [1] weapon roll, [2] HD max, [3] HD roll
+    for (let i = 0; i < diceTerms.length; i += 2) {
+      const term = diceTerms[i];
+      const originalTermTotal = term.total;
+      for (const r of term.results) {
+        if (r.active) r.result = term.faces;
       }
-      const newTermTotal = maxTerm.results
+      const newTermTotal = term.results
         .filter(r => r.active)
         .reduce((sum, r) => sum + r.result, 0);
-      maxTerm._total = newTermTotal;
+      term._total = newTermTotal;
       roll._total = roll._total - originalTermTotal + newTermTotal;
     }
   }

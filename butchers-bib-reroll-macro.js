@@ -12,6 +12,7 @@ const BUTCHERS_BIB_HOOK_FLAG = "butchersBibHookRegistered";
 // --- Entry point: tear down previous registration, then re-register ---
 teardown();
 register();
+console.log("Butcher's Bib macro loaded.");
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 

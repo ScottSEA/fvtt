@@ -13,6 +13,7 @@ const BLOODSHED_HOOK_FLAG = "bloodshedBladeHookRegistered";
 // --- Entry point: tear down previous registration, then re-register ---
 teardown();
 register();
+console.log("Bloodshed Blade macro loaded.");
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 

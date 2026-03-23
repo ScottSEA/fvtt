@@ -12,9 +12,7 @@ const BLOODSHED_HOOK_FLAG = "bloodshedBladeHookRegistered";
 
 // --- Tear down previous registration so re-running the macro picks up changes ---
 if (game[BLOODSHED_HOOK_FLAG]) {
-  console.log("Bloodshed Blade: Cleaning up previous registration");
   const prev = game[BLOODSHED_HOOK_FLAG];
-  if (prev.createHookId != null) Hooks.off("createChatMessage", prev.createHookId);
   if (prev.renderHookId != null) Hooks.off("renderChatMessage", prev.renderHookId);
   if (prev.clickHandler) document.removeEventListener("click", prev.clickHandler);
   const oldStyle = document.getElementById("bloodshed-blade-macro-style");
@@ -23,25 +21,14 @@ if (game[BLOODSHED_HOOK_FLAG]) {
 
 ensureBloodshedBladeStyles();
 
-console.log("Bloodshed Blade: Macro starting execution");
-
 {
-  console.log("Bloodshed Blade: Registering hook set");
-
-  const createHookId = Hooks.on("createChatMessage", (message) => {
-    console.log("Bloodshed Blade: createChatMessage fired", message.id, message.type, message.isRoll);
-  });
 
   const renderHookId = Hooks.on("renderChatMessage", (message, html) => {
     const el = html instanceof HTMLElement ? html : html[0] ?? html;
-    console.log("Bloodshed Blade: renderChatMessage fired", message.id, message.type, message.isRoll);
 
     const actor = resolveActorFromMessage(message);
     const isRoll = message.isRoll || !!message.rolls?.length || !!message.flags?.dnd5e?.roll;
-    if (!actor || !isRoll) {
-      console.log("Bloodshed Blade: skip - not roll or no actor", { actor: !!actor, isRoll });
-      return;
-    }
+    if (!actor || !isRoll) return;
 
     if (!isBloodshedBladeAttackMessage(message, el)) return;
     if (el.querySelector("[data-action='bloodshed-spend-hd']")) return;
@@ -188,7 +175,7 @@ console.log("Bloodshed Blade: Macro starting execution");
 
   document.addEventListener("click", clickHandler);
 
-  game[BLOODSHED_HOOK_FLAG] = { createHookId, renderHookId, clickHandler };
+  game[BLOODSHED_HOOK_FLAG] = { renderHookId, clickHandler };
 }
 
 function ensureBloodshedBladeStyles() {
@@ -357,9 +344,7 @@ function isBloodshedBladeAttackMessage(message, el) {
     text.includes(BLOODSHED_BLADE_ITEM_NAME)
   );
 
-  const isBlade = isAttackRoll && hasName;
-  console.log("Bloodshed Blade: detection", { isAttackRoll, hasName, isBlade });
-  return isBlade;
+  return isAttackRoll && hasName;
 }
 
 function extractAttackRollData(message) {
@@ -446,22 +431,6 @@ function createResultCardStart(cardClass, title) {
 function createResultTotal(total, totalClass) {
   return `<p class="bloodshed-blade-total-label">Total:</p>` +
     `<p class="${totalClass}">${total}</p>`;
-}
-
-async function createBladeDamageRoll(actor, blade) {
-  const baseDamage = blade.system?.damage?.base;
-  if (!baseDamage?.number || !baseDamage?.denomination) return null;
-
-  let formula = `${baseDamage.number}d${baseDamage.denomination}`;
-  const bonus = `${baseDamage.bonus || ""}`.trim();
-  if (bonus) {
-    formula += /^[+\-]/.test(bonus) ? ` ${bonus}` : ` + ${bonus}`;
-  }
-
-  const rollData = actor.getRollData ? actor.getRollData() : {};
-  const damageRoll = new Roll(formula, rollData);
-  await damageRoll.evaluate();
-  return damageRoll;
 }
 
 async function buildGustoRollData(actor, blade, isCritical = false) {

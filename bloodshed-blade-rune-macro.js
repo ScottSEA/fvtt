@@ -10,8 +10,14 @@ const BLOODSHED_BLADE_ITEM_NAME = "Bloodshed Blade";
 const BLOODSHED_BLADE_ACTIVITY_ID = "PXjk4FsU2X7ClsFN";
 const BLOODSHED_HOOK_FLAG = "bloodshedBladeHookRegistered";
 
-// --- Tear down previous registration so re-running the macro picks up changes ---
-if (game[BLOODSHED_HOOK_FLAG]) {
+// --- Entry point: tear down previous registration, then re-register ---
+teardown();
+register();
+
+// ─── Lifecycle ────────────────────────────────────────────────────────────────
+
+function teardown() {
+  if (!game[BLOODSHED_HOOK_FLAG]) return;
   const prev = game[BLOODSHED_HOOK_FLAG];
   if (prev.renderHookId != null) Hooks.off("renderChatMessage", prev.renderHookId);
   if (prev.clickHandler) document.removeEventListener("click", prev.clickHandler);
@@ -19,164 +25,171 @@ if (game[BLOODSHED_HOOK_FLAG]) {
   if (oldStyle) oldStyle.remove();
 }
 
-ensureBloodshedBladeStyles();
-
-{
-
-  const renderHookId = Hooks.on("renderChatMessage", (message, html) => {
-    const el = html instanceof HTMLElement ? html : html[0] ?? html;
-
-    const actor = resolveActorFromMessage(message);
-    const isRoll = message.isRoll || !!message.rolls?.length || !!message.flags?.dnd5e?.roll;
-    if (!actor || !isRoll) return;
-
-    if (!isBloodshedBladeAttackMessage(message, el)) return;
-    if (el.querySelector("[data-action='bloodshed-spend-hd']")) return;
-
-    const attackData = extractAttackRollData(message);
-    if (!attackData) return;
-
-    attackData.isCritical = detectCritical(message, el);
-
-    const hdData = getAvailableHitDice(actor);
-    const noHitDice = hdData.available <= 0;
-    const runeExpended = isRuneExpended(actor);
-
-    const invokeButton = createHitDieButton(
-      message,
-      attackData,
-      noHitDice || runeExpended,
-      noHitDice ? "No Hit Dice" : runeExpended ? "Rune Expended" : "Invoke Rune"
-    );
-    const undoButton = createUndoButton(message, attackData, runeExpended);
-    const buttonGroup = `<div class="bloodshed-blade-btn-group">${invokeButton}${undoButton}</div>`;
-
-    const cardButtons = el.querySelector(".card-buttons");
-    if (cardButtons) {
-      cardButtons.insertAdjacentHTML("beforeend", buttonGroup);
-      return;
-    }
-
-    const diceRoll = el.querySelector(".message-content .dice-roll");
-    if (diceRoll) {
-      diceRoll.insertAdjacentHTML("afterend", buttonGroup);
-      return;
-    }
-
-    el.insertAdjacentHTML("beforeend", buttonGroup);
-  });
-
-  const clickHandler = async (event) => {
-    const spendBtn = event.target.closest("[data-action='bloodshed-spend-hd']");
-    const undoBtn = event.target.closest("[data-action='bloodshed-undo-hd']");
-    const gustoBtn = event.target.closest("[data-action='bloodshed-gusto-damage']");
-
-    if (spendBtn) {
-      event.preventDefault();
-
-      const messageId = spendBtn.dataset.messageId;
-      const attackTotal = Number(spendBtn.dataset.attackTotal);
-      const isCritical = spendBtn.dataset.isCritical === "true";
-      const message = game.messages.get(messageId);
-      if (!message) return;
-
-      const actor = resolveActorFromMessage(message);
-      if (!actor) {
-        ui.notifications.error("Bloodshed Blade: Unable to determine actor for this attack.");
-        return;
-      }
-
-      const hdData = getAvailableHitDice(actor);
-      if (hdData.available <= 0) {
-        ui.notifications.warn("No Hit Dice available to spend!");
-        return;
-      }
-
-      setInvokeButtonState(spendBtn, true, "Rune Invoked");
-      const undoSibling = spendBtn.closest(".bloodshed-blade-btn-group")?.querySelector(".bloodshed-blade-undo-btn");
-      if (undoSibling) undoSibling.disabled = false;
-
-      await rollHitDie(actor, message, hdData.largestType, attackTotal, isCritical);
-    }
-
-    else if (undoBtn) {
-      event.preventDefault();
-
-      const messageId = undoBtn.dataset.messageId;
-      const message = game.messages.get(messageId);
-      if (!message) return;
-
-      const actor = resolveActorFromMessage(message);
-      if (!actor) {
-        ui.notifications.error("Bloodshed Blade: Unable to determine actor for this attack.");
-        return;
-      }
-
-      await unmarkRuneAsExpended(actor);
-      await unmarkHitDieExpended(actor);
-
-      const invokeButton = undoBtn.closest(".bloodshed-blade-btn-group")?.querySelector(".bloodshed-blade-invoke-btn");
-      if (invokeButton) {
-        setInvokeButtonState(invokeButton, false, "Invoke Rune");
-      }
-      undoBtn.disabled = true;
-
-      ui.notifications.info("Rune invocation and hit die expenditure have been undone.");
-    }
-
-    else if (gustoBtn) {
-      event.preventDefault();
-
-      const actorId = gustoBtn.dataset.actorId;
-      const actor = game.actors.get(actorId);
-      if (!actor) {
-        ui.notifications.error("Bloodshed Blade: Unable to determine actor for this damage roll.");
-        return;
-      }
-
-      const blade = actor.items?.getName?.(BLOODSHED_BLADE_ITEM_NAME);
-      if (!blade) {
-        ui.notifications.error("Bloodshed Blade: Could not find the weapon on this actor.");
-        return;
-      }
-
-      const isCritical = gustoBtn.dataset.isCritical === "true";
-      const gustoRollData = await buildGustoRollData(actor, blade, isCritical);
-      if (!gustoRollData.roll) {
-        ui.notifications.error("Bloodshed Blade: Unable to build the damage roll.");
-        return;
-      }
-
-      const { roll: gustoRoll, prof, hdType, displayFormula } = gustoRollData;
-      const damageTotal = gustoRoll.total;
-
-      const cardTitle = isCritical ? "CRITICAL with Hit Dice" : "Attack with Hit Dice";
-      let content = createResultCardStart("bloodshed-blade-gusto-card", cardTitle);
-      if (displayFormula) {
-        content += `<p>Formula: <strong>${displayFormula}</strong></p>`;
-      }
-      if (damageTotal !== null) {
-        content += `<p>Combined Damage Roll: <strong>${damageTotal}</strong></p>`;
-        content += createResultTotal(damageTotal, "bloodshed-blade-gusto-total");
-      }
-      content += `</div>`;
-      if (isCritical) {
-        content += `<p class="bloodshed-blade-crit-smash">${damageTotal}</p>`;
-      }
-
-      await gustoRoll.toMessage({
-        author: game.user.id,
-        speaker: ChatMessage.getSpeaker({ actor }),
-        content,
-        style: (CONST.CHAT_MESSAGE_STYLES ?? CONST.CHAT_MESSAGE_TYPES).OTHER
-      });
-    }
-  };
-
+function register() {
+  ensureBloodshedBladeStyles();
+  const renderHookId = Hooks.on("renderChatMessage", onRenderChatMessage);
+  const clickHandler = onDocumentClick;
   document.addEventListener("click", clickHandler);
-
   game[BLOODSHED_HOOK_FLAG] = { renderHookId, clickHandler };
 }
+
+// ─── Hook & Event Handlers ───────────────────────────────────────────────────
+
+function onRenderChatMessage(message, html) {
+  const el = html instanceof HTMLElement ? html : html[0] ?? html;
+
+  const actor = resolveActorFromMessage(message);
+  const isRoll = message.isRoll || !!message.rolls?.length || !!message.flags?.dnd5e?.roll;
+  if (!actor || !isRoll) return;
+
+  if (!isBloodshedBladeAttackMessage(message, el)) return;
+  if (el.querySelector("[data-action='bloodshed-spend-hd']")) return;
+
+  const attackData = extractAttackRollData(message);
+  if (!attackData) return;
+
+  attackData.isCritical = detectCritical(message, el);
+
+  const hdData = getAvailableHitDice(actor);
+  const noHitDice = hdData.available <= 0;
+  const runeExpended = isRuneExpended(actor);
+
+  const invokeButton = createHitDieButton(
+    message,
+    attackData,
+    noHitDice || runeExpended,
+    noHitDice ? "No Hit Dice" : runeExpended ? "Rune Expended" : "Invoke Rune"
+  );
+  const undoButton = createUndoButton(message, attackData, runeExpended);
+  const buttonGroup = `<div class="bloodshed-blade-btn-group">${invokeButton}${undoButton}</div>`;
+
+  const cardButtons = el.querySelector(".card-buttons");
+  if (cardButtons) {
+    cardButtons.insertAdjacentHTML("beforeend", buttonGroup);
+    return;
+  }
+
+  const diceRoll = el.querySelector(".message-content .dice-roll");
+  if (diceRoll) {
+    diceRoll.insertAdjacentHTML("afterend", buttonGroup);
+    return;
+  }
+
+  el.insertAdjacentHTML("beforeend", buttonGroup);
+}
+
+async function onDocumentClick(event) {
+  const spendBtn = event.target.closest("[data-action='bloodshed-spend-hd']");
+  const undoBtn = event.target.closest("[data-action='bloodshed-undo-hd']");
+  const gustoBtn = event.target.closest("[data-action='bloodshed-gusto-damage']");
+
+  if (spendBtn) await handleInvokeRune(event, spendBtn);
+  else if (undoBtn) await handleUndoRune(event, undoBtn);
+  else if (gustoBtn) await handleDamageRoll(event, gustoBtn);
+}
+
+async function handleInvokeRune(event, btn) {
+  event.preventDefault();
+
+  const messageId = btn.dataset.messageId;
+  const attackTotal = Number(btn.dataset.attackTotal);
+  const isCritical = btn.dataset.isCritical === "true";
+  const message = game.messages.get(messageId);
+  if (!message) return;
+
+  const actor = resolveActorFromMessage(message);
+  if (!actor) {
+    ui.notifications.error("Bloodshed Blade: Unable to determine actor for this attack.");
+    return;
+  }
+
+  const hdData = getAvailableHitDice(actor);
+  if (hdData.available <= 0) {
+    ui.notifications.warn("No Hit Dice available to spend!");
+    return;
+  }
+
+  setInvokeButtonState(btn, true, "Rune Invoked");
+  const undoSibling = btn.closest(".bloodshed-blade-btn-group")?.querySelector(".bloodshed-blade-undo-btn");
+  if (undoSibling) undoSibling.disabled = false;
+
+  await rollHitDie(actor, message, hdData.largestType, attackTotal, isCritical);
+}
+
+async function handleUndoRune(event, btn) {
+  event.preventDefault();
+
+  const messageId = btn.dataset.messageId;
+  const message = game.messages.get(messageId);
+  if (!message) return;
+
+  const actor = resolveActorFromMessage(message);
+  if (!actor) {
+    ui.notifications.error("Bloodshed Blade: Unable to determine actor for this attack.");
+    return;
+  }
+
+  await unmarkRuneAsExpended(actor);
+  await unmarkHitDieExpended(actor);
+
+  const invokeButton = btn.closest(".bloodshed-blade-btn-group")?.querySelector(".bloodshed-blade-invoke-btn");
+  if (invokeButton) {
+    setInvokeButtonState(invokeButton, false, "Invoke Rune");
+  }
+  btn.disabled = true;
+
+  ui.notifications.info("Rune invocation and hit die expenditure have been undone.");
+}
+
+async function handleDamageRoll(event, btn) {
+  event.preventDefault();
+
+  const actorId = btn.dataset.actorId;
+  const actor = game.actors.get(actorId);
+  if (!actor) {
+    ui.notifications.error("Bloodshed Blade: Unable to determine actor for this damage roll.");
+    return;
+  }
+
+  const blade = actor.items?.getName?.(BLOODSHED_BLADE_ITEM_NAME);
+  if (!blade) {
+    ui.notifications.error("Bloodshed Blade: Could not find the weapon on this actor.");
+    return;
+  }
+
+  const isCritical = btn.dataset.isCritical === "true";
+  const gustoRollData = await buildGustoRollData(actor, blade, isCritical);
+  if (!gustoRollData.roll) {
+    ui.notifications.error("Bloodshed Blade: Unable to build the damage roll.");
+    return;
+  }
+
+  const { roll: gustoRoll, prof, hdType, displayFormula } = gustoRollData;
+  const damageTotal = gustoRoll.total;
+
+  const cardTitle = isCritical ? "CRITICAL with Hit Dice" : "Attack with Hit Dice";
+  let content = createResultCardStart("bloodshed-blade-gusto-card", cardTitle);
+  if (displayFormula) {
+    content += `<p>Formula: <strong>${displayFormula}</strong></p>`;
+  }
+  if (damageTotal !== null) {
+    content += `<p>Combined Damage Roll: <strong>${damageTotal}</strong></p>`;
+    content += createResultTotal(damageTotal, "bloodshed-blade-gusto-total");
+  }
+  content += `</div>`;
+  if (isCritical) {
+    content += `<p class="bloodshed-blade-crit-smash">${damageTotal}</p>`;
+  }
+
+  await gustoRoll.toMessage({
+    author: game.user.id,
+    speaker: ChatMessage.getSpeaker({ actor }),
+    content,
+    style: (CONST.CHAT_MESSAGE_STYLES ?? CONST.CHAT_MESSAGE_TYPES).OTHER
+  });
+}
+
+// ─── Styles ──────────────────────────────────────────────────────────────────
 
 function ensureBloodshedBladeStyles() {
   if (document.getElementById("bloodshed-blade-macro-style")) return;
@@ -324,6 +337,8 @@ function ensureBloodshedBladeStyles() {
   document.head.appendChild(style);
 }
 
+// ─── Message Detection ───────────────────────────────────────────────────────
+
 function resolveActorFromMessage(message) {
   return message.actor ||
     (message.speaker?.actor ? game.actors.get(message.speaker.actor) : null) ||
@@ -384,6 +399,8 @@ function detectCritical(message, el) {
   return false;
 }
 
+// ─── HTML Builders ───────────────────────────────────────────────────────────
+
 function createHitDieButton(message, attackData, disabled = false, buttonText = "Invoke Rune") {
   const isDisabledAttr = disabled ? "disabled" : "";
   const title = disabled ? buttonText : "Invoke the blade's rune to add a Hit Die to your attack roll";
@@ -432,6 +449,8 @@ function createResultTotal(total, totalClass) {
   return `<p class="bloodshed-blade-total-label">Total:</p>` +
     `<p class="${totalClass}">${total}</p>`;
 }
+
+// ─── Roll Building ───────────────────────────────────────────────────────────
 
 async function buildGustoRollData(actor, blade, isCritical = false) {
   const baseDamage = blade.system?.damage?.base;
@@ -527,6 +546,8 @@ async function buildGustoRollData(actor, blade, isCritical = false) {
   return { roll, prof, hdType, displayFormula };
 }
 
+// ─── Actor / Item Queries ────────────────────────────────────────────────────
+
 function getAvailableHitDice(actor) {
   const classes = actor.classes || {};
   let totalAvailable = 0;
@@ -566,6 +587,8 @@ function isRuneExpended(actor) {
   const spent = parseInt(activity?.uses?.spent || 0, 10);
   return spent > 0;
 }
+
+// ─── State Mutations ─────────────────────────────────────────────────────────
 
 async function rollHitDie(actor, message, hdType, originalAttackTotal, isCritical = false) {
   try {

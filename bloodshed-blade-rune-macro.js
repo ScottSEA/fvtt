@@ -1,3 +1,37 @@
+// Add custom CSS for Bloodshed Blade buttons
+if (!document.getElementById('bloodshed-blade-macro-style')) {
+  const style = document.createElement('style');
+  style.id = 'bloodshed-blade-macro-style';
+  style.innerHTML = `
+    .bloodshed-blade-btn-group {
+      display: flex;
+      gap: 4px;
+    }
+    .bloodshed-blade-invoke-btn {
+      background-color: #8B0000;
+      color: white;
+      margin-top: 5px;
+      width: 100%;
+      border: none;
+    }
+    .bloodshed-blade-invoke-btn:disabled {
+      background-color: #777;
+      color: white;
+    }
+    .bloodshed-blade-undo-btn {
+      background-color: #444;
+      color: white;
+      margin-top: 5px;
+      width: 40px;
+      border: none;
+    }
+    .bloodshed-blade-undo-btn:disabled {
+      background-color: #222;
+      color: #aaa;
+    }
+  `;
+  document.head.appendChild(style);
+}
 /**
  * BLOODSHED BLADE RUNE INVOCATION MACRO
 *
@@ -63,26 +97,45 @@ if (!game.bloodshedBladeHookRegistered) {
       : runeExpended ? "Rune Expended" 
       : "Invoke Rune"
     );
+    const undoButton = createUndoButton(message, attackData, runeExpended);
+    const buttonGroup = `<div class="bloodshed-blade-btn-group">${button}${undoButton}</div>`;
     const cardButtons = html.find('.card-buttons');
     const messageContent = html.find('.message-content');
     
     if (cardButtons.length) {
-      cardButtons.append(button);
+      cardButtons.append(buttonGroup);
     } else if (messageContent.length) {
       // Foundry message structure may not have card-buttons; place near dice results
       const diceRoll = messageContent.find(".dice-roll");
       if (diceRoll.length) {
-        diceRoll.after(button);
+        diceRoll.after(buttonGroup);
       }
     } else {
-      html.append(button);
+      html.append(buttonGroup);
     }
+  function createUndoButton(message, attackData, runeExpended = false) {
+    // Only enable undo if rune is expended
+    const isDisabledAttr = runeExpended ? "" : "disabled";
+    const dataAction = runeExpended ? `data-action=\"bloodshed-undo-hd\"` : "";
+    const dataMessageId = runeExpended ? `data-message-id=\"${message.id}\"` : "";
+    const dataAttackTotal = runeExpended ? `data-attack-total=\"${attackData.total}\"` : "";
+    const title = "Undo rune invocation and restore hit die";
+    return `<button type=\"button\" class=\"btn btn-sm bloodshed-blade-undo-btn\" ${isDisabledAttr} ${dataAction} ${dataMessageId} ${dataAttackTotal} title=\"${title}\">` +
+      `<i class=\"fas fa-undo\"></i>` +
+      `</button>`;
+  }
   });
   
   $(document).on("click", "[data-action='bloodshed-spend-hd']", async function (e) {
     e.preventDefault();
-    // Disable the button immediately after click
+    // Disable the button and update appearance immediately after click
     this.disabled = true;
+    this.style.backgroundColor = "#777";
+    this.innerHTML = `<i class=\"fas fa-dice-d20\"></i> Rune Invoked`;
+
+    // Enable the undo button
+    const btnGroup = $(this).closest('.bloodshed-blade-btn-group');
+    btnGroup.find('.bloodshed-blade-undo-btn').prop('disabled', false);
 
     const messageId = $(this).data("messageId");
     const attackTotal = Number($(this).data("attackTotal"));
@@ -107,6 +160,60 @@ if (!game.bloodshedBladeHookRegistered) {
     await rollHitDie(actor, message, hdData.largestType, attackTotal);
   });
 
+  // Undo button handler
+  $(document).on("click", "[data-action='bloodshed-undo-hd']", async function (e) {
+    e.preventDefault();
+    this.disabled = true;
+
+    // Re-enable the invoke button
+    const btnGroup = $(this).closest('.bloodshed-blade-btn-group');
+    const invokeBtn = btnGroup.find('.bloodshed-blade-invoke-btn');
+    invokeBtn.prop('disabled', false);
+    invokeBtn.css('background-color', '#8B0000');
+    invokeBtn.html('<i class="fas fa-dice-d20"></i> Invoke Rune');
+
+    const messageId = $(this).data("messageId");
+    const message = game.messages.get(messageId);
+    if (!message) return;
+
+    const actor = message.actor ||
+      (message.speaker?.actor ? game.actors.get(message.speaker.actor) : null) ||
+      (message.speaker?.token ? canvas?.tokens?.get(message.speaker.token)?.actor : null);
+    if (!actor) {
+      ui.notifications.error("Bloodshed Blade: Unable to determine actor for this attack.");
+      return;
+    }
+
+    // Undo rune expended and hit die spent
+    await unmarkRuneAsExpended(actor);
+    await unmarkHitDieExpended(actor);
+    ui.notifications.info('Rune invocation and hit die expenditure have been undone.');
+  });
+// Undo helpers
+async function unmarkRuneAsExpended(actor) {
+  const activity = getInvokedRuneActivity(actor);
+  if (activity) {
+    const path = `system.activities.PXjk4FsU2X7ClsFN.uses.spent`;
+    const currentSpent = activity.uses?.spent || 0;
+    const item = actor.items?.getName?.("Bloodshed Blade");
+    if (currentSpent > 0) {
+      await item.update({ [path]: currentSpent - 1 });
+    }
+  }
+}
+
+async function unmarkHitDieExpended(actor) {
+  const classes = actor.classes || {};
+  for (const [key, cls] of Object.entries(classes)) {
+    const spent = cls.system?.hd?.spent || 0;
+    if (spent > 0) {
+      const path = `system.classes.${key}.hd.spent`;
+      await actor.update({ [path]: spent - 1 });
+      break;
+    }
+  }
+}
+
   game.bloodshedBladeHookRegistered = true;
 }
 
@@ -118,15 +225,13 @@ function extractAttackRollData(message) {
 }
 
 function createHitDieButton(message, attackData, disabled = false, buttonText = "Invoke Rune") {
-  const btnColor = disabled ? "#777" : "#8B0000";
   const isDisabledAttr = disabled ? "disabled" : "";
-  const dataAction = disabled ? "" : `data-action="bloodshed-spend-hd"`;
-  const dataMessageId = disabled ? "" : `data-message-id="${message.id}"`;
-  const dataAttackTotal = disabled ? "" : `data-attack-total="${attackData.total}"`;
+  const dataAction = disabled ? "" : `data-action=\"bloodshed-spend-hd\"`;
+  const dataMessageId = disabled ? "" : `data-message-id=\"${message.id}\"`;
+  const dataAttackTotal = disabled ? "" : `data-attack-total=\"${attackData.total}\"`;
   const title = disabled ? buttonText : "Invoke the blade's rune to add a Hit Die to your attack roll";
-
-  return `<button type="button" class="btn btn-sm" style="background-color: ${btnColor}; color: white; margin-top: 5px; width: 100%;" ${isDisabledAttr} ${dataAction} ${dataMessageId} ${dataAttackTotal} title="${title}">` +
-    `<i class="fas fa-dice-d20"></i> ${buttonText}` +
+  return `<button type=\"button\" class=\"btn btn-sm bloodshed-blade-invoke-btn\" ${isDisabledAttr} ${dataAction} ${dataMessageId} ${dataAttackTotal} title=\"${title}\">` +
+    `<i class=\"fas fa-dice-d20\"></i> ${buttonText}` +
     `</button>`;
 }
 

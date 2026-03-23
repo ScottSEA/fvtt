@@ -89,7 +89,7 @@ console.log("Bloodshed Blade: Macro starting execution");
 
       const messageId = spendBtn.dataset.messageId;
       const attackTotal = Number(spendBtn.dataset.attackTotal);
-      const isCritical = true; // spendBtn.dataset.isCritical === "true";
+      const isCritical = spendBtn.dataset.isCritical === "true";
       const message = game.messages.get(messageId);
       if (!message) return;
 
@@ -153,7 +153,7 @@ console.log("Bloodshed Blade: Macro starting execution");
         return;
       }
 
-      const isCritical = true; //gustoBtn.dataset.isCritical === "true";
+      const isCritical = gustoBtn.dataset.isCritical === "true";
       const gustoRollData = await buildGustoRollData(actor, blade, isCritical);
       if (!gustoRollData.roll) {
         ui.notifications.error("Bloodshed Blade: Unable to build the damage roll.");

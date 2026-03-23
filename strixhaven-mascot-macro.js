@@ -18,7 +18,6 @@ const MASCOT_HOOK_FLAG = "strixhavenMascotHookRegistered";
 // --- Entry point: tear down previous registration, then re-register ---
 teardown();
 register();
-console.log("Cuddly Strixhaven Mascot macro loaded.");
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
@@ -28,6 +27,7 @@ function teardown() {
   if (prev.preRollHookId != null) Hooks.off("dnd5e.preRollSavingThrowV2", prev.preRollHookId);
   if (prev.rollHookId != null) Hooks.off("dnd5e.rollAbilitySaveV2", prev.rollHookId);
   if (prev.renderHookId != null) Hooks.off("renderDialog", prev.renderHookId);
+  console.log("Cuddly Strixhaven Mascot macro torn down.");
 }
 
 function register() {
@@ -35,6 +35,7 @@ function register() {
   const rollHookId = Hooks.on("dnd5e.rollAbilitySaveV2", onRollAbilitySave);
   const renderHookId = Hooks.on("renderDialog", onRenderDialog);
   game[MASCOT_HOOK_FLAG] = { preRollHookId, rollHookId, renderHookId };
+  console.log("Cuddly Strixhaven Mascot macro loaded.");
 }
 
 // ─── Pre-Roll Hook: Flag for Dialog Injection ────────────────────────────────

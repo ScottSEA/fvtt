@@ -13,7 +13,6 @@ const BLOODSHED_HOOK_FLAG = "bloodshedBladeHookRegistered";
 // --- Entry point: tear down previous registration, then re-register ---
 teardown();
 register();
-console.log("Bloodshed Blade macro loaded.");
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
@@ -24,6 +23,7 @@ function teardown() {
   if (prev.clickHandler) document.removeEventListener("click", prev.clickHandler);
   const oldStyle = document.getElementById("bloodshed-blade-macro-style");
   if (oldStyle) oldStyle.remove();
+  console.log("Bloodshed Blade macro torn down.");
 }
 
 function register() {
@@ -32,6 +32,7 @@ function register() {
   const clickHandler = onDocumentClick;
   document.addEventListener("click", clickHandler);
   game[BLOODSHED_HOOK_FLAG] = { renderHookId, clickHandler };
+  console.log("Bloodshed Blade macro loaded.");
 }
 
 // ─── Hook & Event Handlers ───────────────────────────────────────────────────

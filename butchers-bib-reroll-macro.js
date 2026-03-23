@@ -12,7 +12,6 @@ const BUTCHERS_BIB_HOOK_FLAG = "butchersBibHookRegistered";
 // --- Entry point: tear down previous registration, then re-register ---
 teardown();
 register();
-console.log("Butcher's Bib macro loaded.");
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
@@ -23,6 +22,7 @@ function teardown() {
   if (prev.clickHandler) document.removeEventListener("click", prev.clickHandler);
   const oldStyle = document.getElementById("butchers-bib-macro-style");
   if (oldStyle) oldStyle.remove();
+  console.log("Butcher's Bib macro torn down.");
 }
 
 function register() {
@@ -31,6 +31,7 @@ function register() {
   const clickHandler = onDocumentClick;
   document.addEventListener("click", clickHandler);
   game[BUTCHERS_BIB_HOOK_FLAG] = { renderHookId, clickHandler };
+  console.log("Butcher's Bib macro loaded.");
 }
 
 // ─── Hook & Event Handlers ───────────────────────────────────────────────────

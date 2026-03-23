@@ -164,22 +164,9 @@ async function handleDamageRoll(event, btn) {
     return;
   }
 
-  const { roll: gustoRoll, prof, hdType, displayFormula } = gustoRollData;
+  const { roll: gustoRoll, displayFormula } = gustoRollData;
   const damageTotal = gustoRoll.total;
-
-  const cardTitle = isCritical ? "CRITICAL with Hit Dice" : "Attack with Hit Dice";
-  let content = createResultCardStart("bloodshed-blade-gusto-card", cardTitle);
-  if (displayFormula) {
-    content += `<p>Formula: <strong>${displayFormula}</strong></p>`;
-  }
-  if (damageTotal !== null) {
-    content += `<p>Combined Damage Roll: <strong>${damageTotal}</strong></p>`;
-    content += createResultTotal(damageTotal, "bloodshed-blade-gusto-total");
-  }
-  content += `</div>`;
-  if (isCritical) {
-    content += `<p class="bloodshed-blade-crit-smash">${damageTotal}</p>`;
-  }
+  const content = createDamageResultContent(displayFormula, damageTotal, isCritical);
 
   await gustoRoll.toMessage({
     author: game.user.id,
@@ -450,73 +437,80 @@ function createResultTotal(total, totalClass) {
     `<p class="${totalClass}">${total}</p>`;
 }
 
+function createRuneInvokedContent(originalAttackTotal, hdResult, hdType, newTotal, gustoButton) {
+  return createResultCardStart("bloodshed-blade-rune-card", "Rune Invoked") +
+    `<p>Original Attack Roll: <strong>${originalAttackTotal}</strong></p>` +
+    `<p>+ Spent Hit Die Roll: <strong>${hdResult}</strong> (1${hdType})</p>` +
+    createResultTotal(newTotal, "bloodshed-blade-rune-total") +
+    gustoButton +
+    `</div>`;
+}
+
+function createDamageResultContent(displayFormula, damageTotal, isCritical) {
+  const cardTitle = isCritical ? "CRITICAL with Hit Dice" : "Attack with Hit Dice";
+  let content = createResultCardStart("bloodshed-blade-gusto-card", cardTitle);
+  if (displayFormula) {
+    content += `<p>Formula: <strong>${displayFormula}</strong></p>`;
+  }
+  if (damageTotal !== null) {
+    content += `<p>Combined Damage Roll: <strong>${damageTotal}</strong></p>`;
+    content += createResultTotal(damageTotal, "bloodshed-blade-gusto-total");
+  }
+  content += `</div>`;
+  if (isCritical) {
+    content += `<p class="bloodshed-blade-crit-smash">${damageTotal}</p>`;
+  }
+  return content;
+}
+
 // ─── Roll Building ───────────────────────────────────────────────────────────
 
-async function buildGustoRollData(actor, blade, isCritical = false) {
-  const baseDamage = blade.system?.damage?.base;
-  if (!baseDamage?.number || !baseDamage?.denomination) {
-    return { roll: null, prof: 0, hdType: null, displayFormula: null };
-  }
-
+function buildDamageFormula(baseDamage, prof, hdType, isCritical) {
   const diceNum = baseDamage.number;
   const diceDenom = baseDamage.denomination;
 
-  let formula;
-
-  if (isCritical) {
-    formula = `${diceNum}d${diceDenom} + ${diceNum}d${diceDenom}`;
-  } else {
-    formula = `${diceNum}d${diceDenom}`;
-  }
+  let formula = isCritical
+    ? `${diceNum}d${diceDenom} + ${diceNum}d${diceDenom}`
+    : `${diceNum}d${diceDenom}`;
 
   const bonus = `${baseDamage.bonus || ""}`.trim();
-  const conMod = actor.system?.abilities?.con?.mod ?? actor.getRollData?.()?.abilities?.con?.mod ?? 0;
   if (bonus) {
     formula += /^[+\-]/.test(bonus) ? ` ${bonus}` : ` + ${bonus}`;
   }
 
-  const prof = actor.system?.attributes?.prof || 2;
-  const hdData = getAvailableHitDice(actor);
-  const hdType = hdData.largestType || null;
   if (prof > 0 && hdType) {
-    if (isCritical) {
-      formula += ` + ${prof}${hdType} + ${prof}${hdType}`;
-    } else {
-      formula += ` + ${prof}${hdType}`;
-    }
+    formula += isCritical
+      ? ` + ${prof}${hdType} + ${prof}${hdType}`
+      : ` + ${prof}${hdType}`;
   }
 
-  const rollData = actor.getRollData ? actor.getRollData() : {};
-  const roll = new Roll(formula, rollData);
-  await roll.evaluate();
+  return formula;
+}
 
-  // Max Criticals: force every other dice group to max (the "max" copy of each pair)
-  if (isCritical) {
-    const diceTerms = roll.terms.filter(t => t.faces && t.results);
-    // diceTerms: [0] weapon max, [1] weapon roll, [2] HD max, [3] HD roll
-    for (let i = 0; i < diceTerms.length; i += 2) {
-      const term = diceTerms[i];
-      const originalTermTotal = term.total;
-      for (const r of term.results) {
-        if (r.active) r.result = term.faces;
-      }
-      const newTermTotal = term.results
-        .filter(r => r.active)
-        .reduce((sum, r) => sum + r.result, 0);
-      term._total = newTermTotal;
-      roll._total = roll._total - originalTermTotal + newTermTotal;
-    }
-  }
-
-  // Build displayFormula from actual rolled/maxed values
-  let displayFormula;
+function applyMaxCriticals(roll) {
   const diceTerms = roll.terms.filter(t => t.faces && t.results);
+  // diceTerms: [0] weapon max, [1] weapon roll, [2] HD max, [3] HD roll
+  for (let i = 0; i < diceTerms.length; i += 2) {
+    const term = diceTerms[i];
+    const originalTermTotal = term.total;
+    for (const r of term.results) {
+      if (r.active) r.result = term.faces;
+    }
+    const newTermTotal = term.results
+      .filter(r => r.active)
+      .reduce((sum, r) => sum + r.result, 0);
+    term._total = newTermTotal;
+    roll._total = roll._total - originalTermTotal + newTermTotal;
+  }
+}
+
+function buildDisplayFormula(roll, hdType, conMod, isCritical) {
+  const diceTerms = roll.terms.filter(t => t.faces && t.results);
+  const parts = [];
 
   if (isCritical) {
-    // diceTerms: [0] weapon max, [1] weapon roll, [2] HD max (if present), [3] HD roll (if present)
     const weaponMax = diceTerms[0];
     const weaponRoll = diceTerms[1];
-    const parts = [];
     parts.push(`${weaponMax.number}d${weaponMax.faces} MAX (${weaponMax._total ?? weaponMax.total})`);
     if (diceTerms.length > 2) {
       const hdMax = diceTerms[2];
@@ -527,21 +521,40 @@ async function buildGustoRollData(actor, blade, isCritical = false) {
       const hdRoll = diceTerms[3];
       parts.push(`${hdRoll.number}${hdType} HD (${hdRoll._total ?? hdRoll.total})`);
     }
-    if (bonus) {
-      parts.push(`${conMod} (CON)`);
-    }
-    displayFormula = parts.join(" + ");
   } else {
-    const parts = [];
     parts.push(`${diceTerms[0].number}d${diceTerms[0].faces} (${diceTerms[0]._total ?? diceTerms[0].total})`);
     if (diceTerms.length > 1) {
       parts.push(`${diceTerms[1].number}${hdType} HD (${diceTerms[1]._total ?? diceTerms[1].total})`);
     }
-    if (bonus) {
-      parts.push(`${conMod} (CON)`);
-    }
-    displayFormula = parts.join(" + ");
   }
+
+  if (conMod != null) {
+    parts.push(`${conMod} (CON)`);
+  }
+
+  return parts.join(" + ");
+}
+
+async function buildGustoRollData(actor, blade, isCritical = false) {
+  const baseDamage = blade.system?.damage?.base;
+  if (!baseDamage?.number || !baseDamage?.denomination) {
+    return { roll: null, prof: 0, hdType: null, displayFormula: null };
+  }
+
+  const bonus = `${baseDamage.bonus || ""}`.trim();
+  const conMod = actor.system?.abilities?.con?.mod ?? actor.getRollData?.()?.abilities?.con?.mod ?? 0;
+  const prof = actor.system?.attributes?.prof || 2;
+  const hdData = getAvailableHitDice(actor);
+  const hdType = hdData.largestType || null;
+
+  const formula = buildDamageFormula(baseDamage, prof, hdType, isCritical);
+  const rollData = actor.getRollData ? actor.getRollData() : {};
+  const roll = new Roll(formula, rollData);
+  await roll.evaluate();
+
+  if (isCritical) applyMaxCriticals(roll);
+
+  const displayFormula = buildDisplayFormula(roll, hdType, bonus ? conMod : null, isCritical);
 
   return { roll, prof, hdType, displayFormula };
 }
@@ -599,12 +612,7 @@ async function rollHitDie(actor, message, hdType, originalAttackTotal, isCritica
     const newTotal = originalAttackTotal + hdResult;
     const gustoButton = createGustoButtonForOutput(actor, isCritical);
 
-    const content = createResultCardStart("bloodshed-blade-rune-card", "Rune Invoked") +
-      `<p>Original Attack Roll: <strong>${originalAttackTotal}</strong></p>` +
-      `<p>+ Spent Hit Die Roll: <strong>${hdResult}</strong> (1${hdType})</p>` +
-      createResultTotal(newTotal, "bloodshed-blade-rune-total") +
-      gustoButton +
-      `</div>`;
+    const content = createRuneInvokedContent(originalAttackTotal, hdResult, hdType, newTotal, gustoButton);
 
     await roll.toMessage({
       author: game.user.id,

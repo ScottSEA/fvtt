@@ -114,6 +114,16 @@ function ensureButchersBibStyles() {
       color: white;
     }
 
+    .butchers-bib-rerolled-up:disabled {
+      background-color: #2e6b30;
+      color: white;
+    }
+
+    .butchers-bib-rerolled-down:disabled {
+      background-color: #6b3a2e;
+      color: white;
+    }
+
     .butchers-bib-reroll-card {
       padding-left: 10px;
       margin: 10px 0;
@@ -152,6 +162,7 @@ function analyzeForReroll(message, el) {
     actor,
     rerolled,
     originalTotal: message.flags?.world?.butchersBibOriginalTotal ?? null,
+    newTotal: rerolled ? (message.rolls?.[0]?.total ?? null) : null,
     usedThisTurn: rerolled || hasUsedRerollThisTurn(),
   };
 }
@@ -201,13 +212,19 @@ function actorHasEquippedBib(actor) {
 // ─── HTML Builders ───────────────────────────────────────────────────────────
 
 function createRerollButton(message, ctx) {
-  const { usedThisTurn, rerolled, originalTotal } = ctx;
+  const { usedThisTurn, rerolled, originalTotal, newTotal } = ctx;
   const disabled = usedThisTurn ? "disabled" : "";
-  let label, title;
+  let label, title, extraClass;
 
   if (rerolled) {
+    const improved = newTotal > originalTotal;
+    const icon = improved ? "fa-thumbs-up" : "fa-thumbs-down";
+    extraClass = improved ? "butchers-bib-rerolled-up" : "butchers-bib-rerolled-down";
     label = `Rerolled (was ${originalTotal})`;
     title = `Damage was rerolled via Butcher's Bib. Original total: ${originalTotal}.`;
+    return `<button type="button" class="btn btn-sm butchers-bib-reroll-btn ${extraClass}" disabled ` +
+      `data-action="butchers-bib-reroll" data-message-id="${message.id}" title="${title}">` +
+      `<i class="fas ${icon}"></i> ${label}</button>`;
   } else if (usedThisTurn) {
     label = "Reroll Used";
     title = "Already used this turn";

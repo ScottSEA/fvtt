@@ -148,7 +148,7 @@ if (!game[BLOODSHED_HOOK_FLAG]) {
     const { roll: gustoRoll, prof, hdType, displayFormula } = gustoRollData;
     const damageTotal = gustoRoll.total;
 
-    let content = createResultCardStart("bloodshed-blade-gusto-card", "Attack with Gusto!");
+    let content = createResultCardStart("bloodshed-blade-gusto-card", "Fuck 'Em Up!");
     if (displayFormula) {
       content += `<p>Formula: <strong>${displayFormula}</strong></p>`;
     }
@@ -211,7 +211,7 @@ function ensureBloodshedBladeStyles() {
     }
 
     .bloodshed-blade-gusto-btn {
-      background-color: #006400;
+      background-color: #8b0000;
     }
 
     .bloodshed-blade-rune-card,
@@ -226,7 +226,7 @@ function ensureBloodshedBladeStyles() {
     }
 
     .bloodshed-blade-gusto-card {
-      border-left-color: #006400;
+      border-left-color: #8b0000;
     }
 
     .bloodshed-blade-rune-title {
@@ -235,7 +235,7 @@ function ensureBloodshedBladeStyles() {
 
     .bloodshed-blade-gusto-title,
     .bloodshed-blade-gusto-total {
-      color: #006400;
+      color: #8b0000;
     }
 
     .bloodshed-blade-rune-total,

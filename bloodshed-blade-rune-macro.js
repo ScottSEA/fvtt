@@ -49,7 +49,7 @@ console.log("Bloodshed Blade: Macro starting execution");
     const attackData = extractAttackRollData(message);
     if (!attackData) return;
 
-    attackData.isCritical = !!el.querySelector(".dice-total.critical");
+    attackData.isCritical = detectCritical(message, el);
 
     const hdData = getAvailableHitDice(actor);
     const noHitDice = hdData.available <= 0;
@@ -181,7 +181,7 @@ console.log("Bloodshed Blade: Macro starting execution");
         author: game.user.id,
         speaker: ChatMessage.getSpeaker({ actor }),
         content,
-        type: CONST.CHAT_MESSAGE_TYPES.OTHER
+        style: (CONST.CHAT_MESSAGE_STYLES ?? CONST.CHAT_MESSAGE_TYPES).OTHER
       });
     }
   };
@@ -375,6 +375,30 @@ function extractAttackRollData(message) {
   };
 }
 
+function detectCritical(message, el) {
+  // CSS class on the dice total (dnd5e v3 and earlier)
+  if (el.querySelector(".dice-total.critical")) return true;
+
+  // D20Roll.isCritical property (dnd5e v3+)
+  if (message.rolls?.some(r => r.isCritical)) return true;
+
+  // Flags set by dnd5e
+  if (message.flags?.dnd5e?.roll?.isCritical) return true;
+
+  // Check the raw d20 result against the critical threshold
+  const roll = message.rolls?.[0];
+  if (roll) {
+    const d20Term = roll.terms?.find(t => t.faces === 20);
+    if (d20Term) {
+      const threshold = roll.options?.critical ?? 20;
+      const result = d20Term.results?.[0]?.result;
+      if (result != null && result >= threshold) return true;
+    }
+  }
+
+  return false;
+}
+
 function createHitDieButton(message, attackData, disabled = false, buttonText = "Invoke Rune") {
   const isDisabledAttr = disabled ? "disabled" : "";
   const title = disabled ? buttonText : "Invoke the blade's rune to add a Hit Die to your attack roll";
@@ -436,7 +460,7 @@ async function createBladeDamageRoll(actor, blade) {
 
   const rollData = actor.getRollData ? actor.getRollData() : {};
   const damageRoll = new Roll(formula, rollData);
-  await damageRoll.evaluate({ async: true });
+  await damageRoll.evaluate();
   return damageRoll;
 }
 
@@ -476,7 +500,7 @@ async function buildGustoRollData(actor, blade, isCritical = false) {
 
   const rollData = actor.getRollData ? actor.getRollData() : {};
   const roll = new Roll(formula, rollData);
-  await roll.evaluate({ async: true });
+  await roll.evaluate();
 
   // Max Criticals: force every other dice group to max (the "max" copy of each pair)
   if (isCritical) {
@@ -577,7 +601,7 @@ function isRuneExpended(actor) {
 async function rollHitDie(actor, message, hdType, originalAttackTotal, isCritical = false) {
   try {
     const roll = new Roll(`1${hdType}`);
-    await roll.evaluate({ async: true });
+    await roll.evaluate();
 
     const hdResult = roll.total;
     const newTotal = originalAttackTotal + hdResult;
@@ -594,7 +618,7 @@ async function rollHitDie(actor, message, hdType, originalAttackTotal, isCritica
       author: game.user.id,
       speaker: ChatMessage.getSpeaker({ actor }),
       content,
-      type: CONST.CHAT_MESSAGE_TYPES.OTHER
+      style: (CONST.CHAT_MESSAGE_STYLES ?? CONST.CHAT_MESSAGE_TYPES).OTHER
     });
   } catch (err) {
     console.error("Bloodshed Blade Rune Error", err);

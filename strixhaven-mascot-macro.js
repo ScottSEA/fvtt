@@ -21,6 +21,7 @@ const HOOK_RENDER_DIALOG = "renderRollConfigurationDialog";
 
 const SEL_BUTTONS = ".dialog-buttons";
 const SEL_ADVANTAGE = "[data-action='advantage']";
+const ABILITY_WIS = "wis";
 
 // --- Entry point: tear down previous registration, then re-register ---
 teardown();
@@ -48,6 +49,7 @@ function register() {
 function onPreRollSavingThrow(config, dialog, message) {
   const actor = config.subject;
   if (!actor) return;
+  if (config.ability !== ABILITY_WIS) return;
   const mascot = getEquippedMascot(actor);
   if (!mascot) return;
 

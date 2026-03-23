@@ -60,6 +60,9 @@ async function handleReroll(event, btn) {
   btn.innerHTML = `<i class="fas fa-dice"></i> Rerolling...`;
 
   const reroll = await executeReroll(intent.originalRoll, intent.actor);
+  if (game.dice3d) {
+    await game.dice3d.showForRoll(reroll, game.user, true);
+  }
   await updateOriginalMessage(intent.message, reroll, intent.originalTotal);
   markRerollUsed();
 }
@@ -244,13 +247,14 @@ async function executeReroll(originalRoll, actor) {
 // ─── Turn Tracking ───────────────────────────────────────────────────────────
 
 function hasUsedRerollThisTurn() {
-  const combat = game.combat;
-  if (!combat?.started) return false;
-  const last = game._butchersBibLastReroll;
-  if (!last) return false;
-  return last.combatId === combat.id &&
-         last.round === combat.round &&
-         last.turn === combat.turn;
+  return false; // TEMP: disabled for testing
+  // const combat = game.combat;
+  // if (!combat?.started) return false;
+  // const last = game._butchersBibLastReroll;
+  // if (!last) return false;
+  // return last.combatId === combat.id &&
+  //        last.round === combat.round &&
+  //        last.turn === combat.turn;
 }
 
 function markRerollUsed() {

@@ -293,7 +293,6 @@ async function rollHitDie(actor, message, hdType, originalAttackTotal) {
       type: CONST.CHAT_MESSAGE_TYPES.OTHER
     });
 
-    ui.notifications.info(`Rune invoked! Attack bonus: +${hdResult} (new total: ${newTotal})`);
   } catch (err) {
     console.error('Bloodshed Blade Rune Error', err);
     ui.notifications.error('Error invoking rune. Check console.');

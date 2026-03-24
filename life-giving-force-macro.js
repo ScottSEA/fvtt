@@ -159,22 +159,26 @@ function onRenderChatMessage(message, html) {
     const targetName = event.currentTarget.dataset.targetName;
     if (!tempHP || tempHP <= 0 || !targetActorId) return;
 
-    // Only the target's owner can click this
-    const myActor = game.user.character;
-    if (!myActor || myActor.id !== targetActorId) {
-      ui.notifications.warn(`🌳 This button is for ${targetName} — not your character.`);
+    // Look up the target actor and check ownership
+    const targetActor = game.actors.get(targetActorId);
+    if (!targetActor) {
+      ui.notifications.warn(`🌳 Target actor not found.`);
+      return;
+    }
+    if (!targetActor.isOwner) {
+      ui.notifications.warn(`🌳 You don't have permission to update ${targetName}.`);
       return;
     }
 
-    const currentTemp = myActor.system.attributes.hp.temp ?? 0;
+    const currentTemp = targetActor.system.attributes.hp.temp ?? 0;
     if (tempHP > currentTemp) {
-      await myActor.update({ "system.attributes.hp.temp": tempHP });
+      await targetActor.update({ "system.attributes.hp.temp": tempHP });
       ui.notifications.info(
-        `🌳 ${myActor.name} gains ${tempHP} Temporary HP from Life-Giving Force!`
+        `🌳 ${targetActor.name} gains ${tempHP} Temporary HP from Life-Giving Force!`
       );
     } else {
       ui.notifications.info(
-        `🌳 ${myActor.name} already has ${currentTemp} Temp HP (rolled ${tempHP}). No change.`
+        `🌳 ${targetActor.name} already has ${currentTemp} Temp HP (rolled ${tempHP}). No change.`
       );
     }
   });

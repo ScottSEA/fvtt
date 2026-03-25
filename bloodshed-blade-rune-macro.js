@@ -341,7 +341,6 @@ function analyzeMessage(message, el) {
     actor,
     attackTotal: attackData.total,
     formula: attackData.formula,
-    rollId: attackData.rollId,
     isCritical: detectCritical(message, el),
     hdData: getAvailableHitDice(actor),
     runeExpended: isRuneExpended(actor),
@@ -408,7 +407,6 @@ function extractAttackRollData(message) {
   return {
     total: rollData.total,
     formula: rollData.formula,
-    rollId: message.id
   };
 }
 

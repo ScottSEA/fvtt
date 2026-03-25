@@ -84,9 +84,11 @@ function onDamageActor(actor, changes, update, userId) {
   state._processing = true;
 
   // Fire the async dialog chain (can't await in a hook callback)
-  handleLethalDamage(actor).finally(() => {
-    state._processing = false;
-  });
+  handleLethalDamage(actor)
+    .catch(err => console.error("Relentless Rage error:", err))
+    .finally(() => {
+      state._processing = false;
+    });
 }
 
 // ─── Main Logic: Two-Step Recovery ───────────────────────────────────────────

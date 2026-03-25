@@ -123,7 +123,7 @@ function getEquippedMascot(actor) {
 
 function getMascotUsesRemaining(mascot) {
   const uses = mascot.system?.uses;
-  if (!uses || uses.max == null || uses.max === 0) {
+  if (!uses || uses.max == null) {
     console.warn(
       "Strixhaven Mascot: Item uses not configured. " +
       "Set max uses to 1 with 'Long Rest' recovery for automatic tracking."

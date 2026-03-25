@@ -605,7 +605,7 @@ async function buildDamageRoll(actor, blade, isCritical = false) {
 
   if (isCritical) applyMaxCriticals(roll);
 
-  const displayFormula = buildDisplayFormula(roll, hdType, bonus ? conMod : null, isCritical);
+  const displayFormula = buildDisplayFormula(roll, hdType, conMod, isCritical);
 
   return { roll, prof, hdType, displayFormula };
 }

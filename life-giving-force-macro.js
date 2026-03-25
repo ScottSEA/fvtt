@@ -117,18 +117,31 @@ async function showLifeGivingForceDialog(actor, name) {
 
   if (!confirmed) return;
 
-  if (game.user.targets.size === 0) {
+  const target = game.user.targets.first();
+  if (!target) {
     ui.notifications.warn("🌳 No target selected — select a token and try again.");
     return;
   }
 
-  // Use the native dnd5e activity — this creates a chat card with a "Healing"
-  // roll button. The system handles the roll and produces Apply buttons that
-  // work on ALL clients (no custom chat hooks needed).
+  // Post a narrative message, then trigger the native dnd5e heal activity.
+  // The system handles the roll, chat card, and Apply buttons on ALL clients.
+  const targetName = target.actor?.name ?? target.name;
+  await ChatMessage.create({
+    speaker: ChatMessage.getSpeaker({ actor }),
+    content:
+      `<div style="text-align:center;">` +
+      `<h2 style="margin:0 0 4px; font-size:20px;">🌳 Life-Giving Force</h2>` +
+      `<p style="margin:4px 0;"><strong>${name}</strong> reaches out to <strong>${targetName}</strong>, channeling the life force of the World Tree!</p>` +
+      `</div>`,
+  });
+
   await activity.use(
-    { consume: false },     // don't consume resources (macro-triggered, not a standard action)
-    { configure: false },   // skip the activity usage dialog (our Dialog.confirm replaces it)
-    {}                      // default message config — let dnd5e create the chat card
+    { consume: false, subsequentActions: false },
+    { configure: false },
+    { create: false }
   );
+
+  // Roll healing directly, skipping the roll dialog
+  await activity.rollDamage({}, { configure: false }, {});
 }
 

@@ -80,15 +80,17 @@ function onApplyDamage(actor, amount, options) {
   if (amount <= 0) return;
   if (actor.system.attributes.hp.value > 0) return;
 
-  // Look up the most recent melee attack from a GWM actor
-  const lastAttack = game._gwmHewLastMeleeAttack;
+  // Find the most recent current melee attack from a GWM actor
+  const attackMap = game._gwmHewLastMeleeAttack;
+  if (!attackMap?.size) return;
+
+  let lastAttack = null;
+  for (const [attackerId, attack] of attackMap) {
+    if (attackerId === actor.id) continue; // Skip self-damage
+    if (!isLastAttackCurrent(attack)) continue;
+    if (!lastAttack || attack.timestamp > lastAttack.timestamp) lastAttack = attack;
+  }
   if (!lastAttack) return;
-
-  // Don't trigger if the damaged actor is the attacker
-  if (actor.id === lastAttack.actorId) return;
-
-  // Verify the attack was on the same combat turn (or recent if no combat)
-  if (!isLastAttackCurrent(lastAttack)) return;
 
   // Resolve the attacking actor — only process on the attacker's owner
   const attackingActor = game.actors.get(lastAttack.actorId);
@@ -213,14 +215,15 @@ function resolveWeaponFromMessage(message, actor) {
 // ─── Melee Attack Tracking (for 0 HP path) ────────────────────────────────────
 
 function storeMeleeAttack(actor, weapon) {
-  game._gwmHewLastMeleeAttack = {
+  if (!game._gwmHewLastMeleeAttack) game._gwmHewLastMeleeAttack = new Map();
+  game._gwmHewLastMeleeAttack.set(actor.id, {
     actorId: actor.id,
     weaponName: weapon.name,
     timestamp: Date.now(),
     combatId: game.combat?.id,
     round: game.combat?.round,
     turn: game.combat?.turn,
-  };
+  });
 
   if (HEW_DEBUG) {
     console.log(`GWM Hew: Stored melee attack — ${actor.name} with ${weapon.name}`);

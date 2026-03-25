@@ -49,6 +49,7 @@ function onUpdateCombat(combat, changed) {
   if (combatant.isDefeated) return;
 
   const actor = combatant.actor;
+  if (!actor) return;
   const name = actor.name ?? "Unknown";
 
   ui.notifications.info(`⚔️ It's ${name}'s turn!`);

@@ -111,6 +111,7 @@ function analyzeForHew(message, el) {
 
   const actor = resolveActorFromMessage(message);
   if (!actor) return null;
+  if (!actor.isOwner) return null;
   if (!actorHasGWM(actor)) return null;
 
   const weapon = resolveWeaponFromMessage(message, actor);

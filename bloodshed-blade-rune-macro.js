@@ -7,7 +7,6 @@
  */
 
 const BLOODSHED_BLADE_ITEM_NAME = "Bloodshed Blade";
-const BLOODSHED_BLADE_ACTIVITY_ID = "PXjk4FsU2X7ClsFN";
 const BLOODSHED_HOOK_FLAG = "bloodshedBladeHookRegistered";
 
 // --- Entry point: tear down previous registration, then re-register ---
@@ -327,6 +326,12 @@ function analyzeMessage(message, el) {
   const actor = resolveActorFromMessage(message);
   const isRoll = message.isRoll || !!message.rolls?.length || !!message.flags?.dnd5e?.roll;
   if (!actor || !isRoll) return null;
+  if (!actor.isOwner) return null;
+
+  // Verify the Bloodshed Blade is equipped
+  const blade = actor.items?.find(i => i.name === BLOODSHED_BLADE_ITEM_NAME && i.type === "weapon");
+  if (!blade || !blade.system?.equipped) return null;
+
   if (!isBloodshedBladeAttackMessage(message, el)) return null;
 
   const attackData = extractAttackRollData(message);
@@ -637,13 +642,20 @@ function getInvokedRuneActivity(actor) {
   const item = actor.items?.getName?.(BLOODSHED_BLADE_ITEM_NAME);
   if (!item) return null;
 
-  const activities = item.system?.activities || {};
-  return activities.get?.(BLOODSHED_BLADE_ACTIVITY_ID) || null;
+  const activities = item.system?.activities;
+  if (!activities) return null;
+
+  // Find the rune invocation activity (the one with limited uses)
+  for (const [id, activity] of activities.entries()) {
+    if (activity.uses?.max > 0) return { activity, id, item };
+  }
+  return null;
 }
 
 function isRuneExpended(actor) {
-  const activity = getInvokedRuneActivity(actor);
-  const spent = parseInt(activity?.uses?.spent || 0, 10);
+  const result = getInvokedRuneActivity(actor);
+  if (!result) return false;
+  const spent = parseInt(result.activity?.uses?.spent || 0, 10);
   return spent > 0;
 }
 
@@ -676,13 +688,11 @@ async function updateRuneState(actor, direction, hdType = null) {
 }
 
 async function updateRuneUses(actor, delta) {
-  const activity = getInvokedRuneActivity(actor);
-  if (!activity) return;
+  const result = getInvokedRuneActivity(actor);
+  if (!result) return;
 
-  const item = actor.items?.getName?.(BLOODSHED_BLADE_ITEM_NAME);
-  if (!item) return;
-
-  const path = `system.activities.${BLOODSHED_BLADE_ACTIVITY_ID}.uses.spent`;
+  const { activity, id, item } = result;
+  const path = `system.activities.${id}.uses.spent`;
   const currentSpent = activity.uses?.spent || 0;
   const newSpent = currentSpent + delta;
   if (newSpent >= 0) {

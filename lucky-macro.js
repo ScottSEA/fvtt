@@ -25,7 +25,6 @@
 let LUCKY_DEBUG = false;
 
 const LUCKY_FEAT_NAME = "Lucky";
-const LUCKY_CHARACTER_NAME = "Tusk";
 const LUCKY_HOOK_FLAG = "luckyFeatHookRegistered";
 const LUCKY_PENDING_KEY = "_luckyFeatPending";
 
@@ -148,51 +147,66 @@ function onRenderChatMessage(message, html) {
   // Only process attack rolls
   if (message.flags?.dnd5e?.roll?.type !== "attack") return;
 
-  // Resolve Tusk's actor
-  const tuskActor = game.actors.getName(LUCKY_CHARACTER_NAME);
-  if (!tuskActor) return;
-
-  // Don't show on our own attacks
-  if (message.speaker?.actor === tuskActor.id) return;
-
-  // Check if Tusk has Lucky feat with uses remaining
-  const luckyItem = getLuckyFeat(tuskActor);
-  if (!luckyItem) return;
-
   const el = html instanceof HTMLElement ? html : html[0] ?? html;
 
   // Skip if already injected
   if (el.querySelector("[data-action='lucky-defensive']")) return;
 
-  // Target detection: only show if Tusk is a plausible target
+  // Find all owned actors with the Lucky feat
+  const luckyActors = findOwnedLuckyActors();
+  if (luckyActors.length === 0) return;
+
+  const attackerActorId = message.speaker?.actor;
   const targets = message.flags?.dnd5e?.targets ?? [];
-  if (targets.length > 0 && !isTuskAmongTargets(targets, tuskActor)) return;
 
-  const remaining = getLuckPointsRemaining(luckyItem);
-  const container = el.querySelector(".message-content");
-  if (!container) return;
+  for (const { actor, luckyItem } of luckyActors) {
+    // Don't show on our own attacks
+    if (attackerActorId === actor.id) continue;
 
-  if (LUCKY_DEBUG) console.log("Lucky | defensive banner injected", {
-    remaining, targets: targets.length,
-  });
+    // Target detection: only show if this actor is a plausible target
+    if (targets.length > 0 && !isActorAmongTargets(targets, actor)) continue;
 
-  const buttonHtml = remaining > 0
-    ? buildDefensiveButton(tuskActor, luckyItem, remaining, targets.length === 0)
-    : buildDefensiveNoUses();
-  container.insertAdjacentHTML("beforeend", buttonHtml);
+    const remaining = getLuckPointsRemaining(luckyItem);
+    const container = el.querySelector(".message-content");
+    if (!container) return;
+
+    if (LUCKY_DEBUG) console.log("Lucky | defensive banner injected", {
+      actor: actor.name, remaining, targets: targets.length,
+    });
+
+    const buttonHtml = remaining > 0
+      ? buildDefensiveButton(actor, luckyItem, remaining, targets.length === 0)
+      : buildDefensiveNoUses();
+    container.insertAdjacentHTML("beforeend", buttonHtml);
+    break; // One banner per message
+  }
 }
 
 /**
- * Check whether Tusk's actor appears among the message's recorded targets.
+ * Find all actors owned by the current user that have the Lucky feat.
+ */
+function findOwnedLuckyActors() {
+  const results = [];
+  for (const actor of game.actors) {
+    if (!actor.isOwner) continue;
+    if (actor.type !== "character") continue;
+    const luckyItem = getLuckyFeat(actor);
+    if (luckyItem) results.push({ actor, luckyItem });
+  }
+  return results;
+}
+
+/**
+ * Check whether an actor appears among the message's recorded targets.
  * Targets are stored as { uuid: "Scene.x.Token.y", ac: N }.
  */
-function isTuskAmongTargets(targets, tuskActor) {
+function isActorAmongTargets(targets, actor) {
   return targets.some(t => {
     try {
       const doc = fromUuidSync(t.uuid);
       if (!doc) return false;
       const actorId = doc.actorId ?? doc.actor?.id;
-      return actorId === tuskActor.id;
+      return actorId === actor.id;
     } catch {
       return false;
     }

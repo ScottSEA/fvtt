@@ -47,6 +47,9 @@ function onPreRollSavingThrow(config, dialog, message) {
   if (!actor) return;
   if (config.ability !== ABILITY_DEX) return;
 
+  // Only trigger if the actor actually has the Danger Sense feature
+  if (!actor.items?.some(i => i.name === "Danger Sense" && i.type === "feat")) return;
+
   game[DANGER_SENSE_PENDING_KEY] = true;
 }
 

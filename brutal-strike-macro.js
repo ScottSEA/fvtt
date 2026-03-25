@@ -66,6 +66,7 @@ async function onDocumentClick(event) {
 function analyzeForBrutalStrike(message) {
   const actor = resolveActorFromMessage(message);
   if (!actor) return null;
+  if (!actor.isOwner) return null;
 
   // Must be a weapon attack roll
   if (!isWeaponAttackMessage(message)) return null;

@@ -3,14 +3,14 @@
  *
  * Displays a notification when it becomes your turn in combat.
  * If Rage is active and the actor has the Vitality of the Tree feature,
- * offers a dialog to use Life-Giving Force: roll Xd6 (X = Rage Damage bonus)
- * and apply the result as Temporary HP to a targeted creature.
+ * offers a dialog to use Life-Giving Force via the item's native Heal activity.
+ * The dnd5e system handles the roll, chat card, and cross-client Apply buttons.
  */
 
 const LGF_HOOK_FLAG = "lifeGivingForceHookRegistered";
 const LIFE_GIVING_FORCE_NAME = "Vitality of the Tree";
-
-const LGF_CHAT_FLAG = "lgf-temp-hp";
+const LIFE_GIVING_FORCE_ACTIVITY = "Life-Giving Force";
+let LGF_DEBUG = false;
 
 // --- Entry point: tear down previous registration, then re-register ---
 teardown();
@@ -30,14 +30,12 @@ function teardown() {
   if (!game[LGF_HOOK_FLAG]) return;
   const prev = game[LGF_HOOK_FLAG];
   if (prev.combatHookId != null) Hooks.off("updateCombat", prev.combatHookId);
-  if (prev.chatHookId != null) Hooks.off("renderChatMessage", prev.chatHookId);
   console.log("Life-Giving Force macro torn down.");
 }
 
 function register() {
   const combatHookId = Hooks.on("updateCombat", onUpdateCombat);
-  const chatHookId = Hooks.on("renderChatMessage", onRenderChatMessage);
-  game[LGF_HOOK_FLAG] = { combatHookId, chatHookId };
+  game[LGF_HOOK_FLAG] = { combatHookId };
   console.log("Life-Giving Force macro loaded.");
 }
 
@@ -89,6 +87,22 @@ async function showLifeGivingForceDialog(actor, name) {
   const rageDmg = getRageDamageBonus(actor);
   if (rageDmg <= 0) return;
 
+  // Find the Vitality of the Tree item and its Life-Giving Force heal activity
+  const item = actor.items?.find(
+    i => i.name === LIFE_GIVING_FORCE_NAME && i.type === "feat"
+  );
+  if (!item) return;
+
+  const activity = Array.from(item.system.activities?.values() ?? []).find(
+    a => a.name === LIFE_GIVING_FORCE_ACTIVITY
+  );
+  if (!activity) {
+    ui.notifications.warn("🌳 Could not find Life-Giving Force activity on the item.");
+    return;
+  }
+
+  if (LGF_DEBUG) console.log("Life-Giving Force | Found activity:", activity);
+
   const confirmed = await Dialog.confirm({
     title: "🌳 Life-Giving Force",
     content:
@@ -103,83 +117,18 @@ async function showLifeGivingForceDialog(actor, name) {
 
   if (!confirmed) return;
 
-  const targets = game.user.targets;
-  if (targets.size === 0) {
+  if (game.user.targets.size === 0) {
     ui.notifications.warn("🌳 No target selected — select a token and try again.");
     return;
   }
 
-  const target = targets.first();
-  const targetActor = target.actor;
-  if (!targetActor) {
-    ui.notifications.warn("🌳 Target has no actor data.");
-    return;
-  }
-
-  const formula = `${rageDmg}d6`;
-  const roll = await new Roll(formula).evaluate();
-  const tempHP = roll.total;
-
-  // Post a chat message with the roll and an "Apply" button for the target
-  const buttonStyle = "background:#4a8a3f; color:white; border:none; padding:6px 16px; " +
-    "border-radius:4px; cursor:pointer; font-size:14px; margin-top:6px;";
-  const content =
-    `<div style="text-align:center;">` +
-    `<h3 style="margin:0 0 4px;">🌳 Life-Giving Force</h3>` +
-    `<p style="margin:4px 0;"><strong>${name}</strong> grants <strong>${tempHP}</strong> ` +
-    `Temporary HP to <strong>${targetActor.name}</strong>!</p>` +
-    `<p style="margin:4px 0; font-size:12px; color:#666;">` +
-    `(${roll.formula} = ${roll.result})</p>` +
-    `<button class="${LGF_CHAT_FLAG}" ` +
-    `data-temp-hp="${tempHP}" ` +
-    `data-target-actor-id="${targetActor.id}" ` +
-    `data-target-name="${targetActor.name}" ` +
-    `style="${buttonStyle}">` +
-    `Apply ${tempHP} Temp HP to ${targetActor.name}</button>` +
-    `</div>`;
-
-  await ChatMessage.create({
-    speaker: ChatMessage.getSpeaker({ actor }),
-    content,
-  });
+  // Use the native dnd5e activity — this creates a chat card with a "Healing"
+  // roll button. The system handles the roll and produces Apply buttons that
+  // work on ALL clients (no custom chat hooks needed).
+  await activity.use(
+    { consume: false },     // don't consume resources (macro-triggered, not a standard action)
+    { configure: false },   // skip the activity usage dialog (our Dialog.confirm replaces it)
+    {}                      // default message config — let dnd5e create the chat card
+  );
 }
 
-// ─── Chat Button Handler ─────────────────────────────────────────────────────
-
-function onRenderChatMessage(message, html) {
-  const btn = html[0]?.querySelector?.(`.${LGF_CHAT_FLAG}`)
-    ?? html.find?.(`.${LGF_CHAT_FLAG}`)?.[0];
-  if (!btn) return;
-
-  btn.addEventListener("click", async (event) => {
-    event.preventDefault();
-
-    const tempHP = Number(event.currentTarget.dataset.tempHp);
-    const targetActorId = event.currentTarget.dataset.targetActorId;
-    const targetName = event.currentTarget.dataset.targetName;
-    if (!tempHP || tempHP <= 0 || !targetActorId) return;
-
-    // Look up the target actor and check ownership
-    const targetActor = game.actors.get(targetActorId);
-    if (!targetActor) {
-      ui.notifications.warn(`🌳 Target actor not found.`);
-      return;
-    }
-    if (!targetActor.isOwner) {
-      ui.notifications.warn(`🌳 You don't have permission to update ${targetName}.`);
-      return;
-    }
-
-    const currentTemp = targetActor.system.attributes.hp.temp ?? 0;
-    if (tempHP > currentTemp) {
-      await targetActor.update({ "system.attributes.hp.temp": tempHP });
-      ui.notifications.info(
-        `🌳 ${targetActor.name} gains ${tempHP} Temporary HP from Life-Giving Force!`
-      );
-    } else {
-      ui.notifications.info(
-        `🌳 ${targetActor.name} already has ${currentTemp} Temp HP (rolled ${tempHP}). No change.`
-      );
-    }
-  });
-}

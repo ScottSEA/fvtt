@@ -125,7 +125,9 @@ function isRecklessActive(actor) {
 
 function hasBrutalStrike(actor) {
   return actor.items?.some(i =>
-    i.system?.identifier === "brutal-strike" && i.type === "feat"
+    i.type === "feat" && (
+      i.system?.identifier === "brutal-strike" || i.name === "Brutal Strike"
+    )
   ) ?? false;
 }
 

@@ -271,7 +271,8 @@ async function onDocumentClick(event) {
   // Disable the button visually
   btn.style.opacity = "0.5";
   btn.style.pointerEvents = "none";
-  btn.querySelector("p").textContent =
+  const btnText = btn.querySelector("p");
+  if (btnText) btnText.textContent =
     `Luck Point spent! ${newRemaining} remaining.`;
 
   ui.notifications.info(

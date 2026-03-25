@@ -69,7 +69,7 @@ function onCreateActiveEffect(effect, options, userId) {
   const actor = effect.parent;
   if (!actor || actor.documentName !== "Actor") return;
 
-  applyVitalitySurge(actor);
+  applyVitalitySurge(actor).catch(err => console.error("Vitality Surge error:", err));
 }
 
 function onUpdateActiveEffect(effect, changes, options, userId) {
@@ -82,7 +82,7 @@ function onUpdateActiveEffect(effect, changes, options, userId) {
   const actor = effect.parent;
   if (!actor || actor.documentName !== "Actor") return;
 
-  applyVitalitySurge(actor);
+  applyVitalitySurge(actor).catch(err => console.error("Vitality Surge error:", err));
 }
 
 // ─── Rage Detection ──────────────────────────────────────────────────────────

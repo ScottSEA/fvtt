@@ -130,8 +130,10 @@ async function showLifeGivingForceDialog(actor, name) {
     speaker: ChatMessage.getSpeaker({ actor }),
     content:
       `<div style="text-align:center;">` +
-      `<h2 style="margin:0 0 4px; font-size:20px;">🌳 Life-Giving Force</h2>` +
-      `<p style="margin:4px 0;"><strong>${name}</strong> reaches out to <strong>${targetName}</strong>, channeling the life force of the World Tree!</p>` +
+      `<h2 style="margin:0 0 4px; font-size:15px;font-weight:bold;">🌳 Life-Giving Force 🌳</h2>` +
+      `<p style="margin:4px 0;"><strong>${name}</strong> reaches out to </p>` +
+      `<h2>${targetName}</h2>` +
+      `<p>channeling the life force of the World Tree!</p>` +
       `</div>`,
   });
 

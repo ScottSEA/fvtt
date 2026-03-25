@@ -69,14 +69,9 @@ function onDamageActor(actor, changes, update, userId) {
     return;
   }
 
-  // Check for outright death (excess damage >= max HP)
-  const maxHP = actor.system.attributes?.hp?.max ?? 1;
-  const excess = (changes.total ?? 0) - (changes.hp ?? 0) - (changes.temp ?? 0);
-  if (excess >= maxHP) {
-    if (RELENTLESS_DEBUG) console.log("Relentless | Outright death — excess",
-      excess, ">= maxHP", maxHP);
-    return;
-  }
+  // Note: Outright death (excess damage >= max HP) cannot be reliably detected
+  // from this hook's clamped damage values. The DM should adjudicate outright
+  // death before the player attempts the Relentless Rage save.
 
   // Guard against re-entrancy (dialog already showing)
   const state = game[RELENTLESS_STATE_KEY];

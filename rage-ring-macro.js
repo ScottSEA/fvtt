@@ -28,6 +28,7 @@ const BG_COLOR       = "#550000";  // dark inner glow
 // --- Entry point: tear down previous registration, then re-register ---
 teardown();
 register();
+applyRingsForCurrentlyRaging();
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
@@ -48,6 +49,16 @@ function register() {
   const postUseHookId = Hooks.on("dnd5e.postUseActivity", onPostUseActivity);
   game[RAGE_RING_HOOK_FLAG] = { createHookId, updateHookId, deleteHookId, postUseHookId };
   console.log("Rage Ring macro loaded.");
+}
+
+function applyRingsForCurrentlyRaging() {
+  for (const actor of game.actors) {
+    if (!actor.isOwner) continue;
+    const isRaging = actor.effects?.some(e => !e.disabled && isRageEffect(e));
+    if (!isRaging) continue;
+    if (RAGE_RING_DEBUG) console.log("Rage Ring | Startup: found raging actor", actor.name);
+    applyRageRing(actor).catch(err => console.error("Rage Ring error:", err));
+  }
 }
 
 // ─── Hook Handlers ────────────────────────────────────────────────────────────

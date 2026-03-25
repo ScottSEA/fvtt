@@ -138,13 +138,18 @@ async function showLifeGivingForceDialog(actor, name) {
       `</div>`,
   });
 
-  await activity.use(
-    { consume: false, subsequentActions: false },
-    { configure: false },
-    { create: false }
-  );
+  try {
+    await activity.use(
+      { consume: false, subsequentActions: false },
+      { configure: false },
+      { create: false }
+    );
 
-  // Roll healing directly, skipping the roll dialog
-  await activity.rollDamage({}, { configure: false }, {});
+    // Roll healing directly, skipping the roll dialog
+    await activity.rollDamage({}, { configure: false }, {});
+  } catch (err) {
+    console.error("Life-Giving Force | Error invoking heal activity:", err);
+    ui.notifications.error("🌳 Life-Giving Force: Error rolling healing. Check console.");
+  }
 }
 

@@ -250,14 +250,13 @@ async function executeReroll(originalRoll, actor) {
 // ─── Turn Tracking ───────────────────────────────────────────────────────────
 
 function hasUsedRerollThisTurn() {
-  return false; // TEMP: disabled for testing
-  // const combat = game.combat;
-  // if (!combat?.started) return false;
-  // const last = game._butchersBibLastReroll;
-  // if (!last) return false;
-  // return last.combatId === combat.id &&
-  //        last.round === combat.round &&
-  //        last.turn === combat.turn;
+  const combat = game.combat;
+  if (!combat?.started) return false;
+  const last = game._butchersBibLastReroll;
+  if (!last) return false;
+  return last.combatId === combat.id &&
+         last.round === combat.round &&
+         last.turn === combat.turn;
 }
 
 function markRerollUsed() {

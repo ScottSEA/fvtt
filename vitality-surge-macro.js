@@ -55,7 +55,7 @@ function onPostUseActivity(activity, usageConfig, results) {
   const actor = item.actor ?? item.parent;
   if (!actor?.isOwner) return;
 
-  applyVitalitySurge(actor);
+  applyVitalitySurge(actor).catch(err => console.error("Vitality Surge error:", err));
 }
 
 // ─── ActiveEffect Hooks (fallback) ───────────────────────────────────────────

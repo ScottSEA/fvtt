@@ -285,7 +285,7 @@ function injectHewBanner(el, weaponName, reason) {
   target.insertAdjacentHTML(position, banner);
 }
 
-function postHewChatMessage(actor, weaponName, reason) {
+async function postHewChatMessage(actor, weaponName, reason) {
   const content = `<div class="gwm-hew-banner" data-gwm-hew-banner="true">` +
     `<div class="gwm-hew-banner-icon">⚔️</div>` +
     `<div class="gwm-hew-banner-text">` +
@@ -293,7 +293,7 @@ function postHewChatMessage(actor, weaponName, reason) {
     `<br>Make a melee attack as a <strong>Bonus Action</strong>!` +
     `</div></div>`;
 
-  ChatMessage.create({
+  await ChatMessage.create({
     user: game.user.id,
     speaker: ChatMessage.getSpeaker({ actor }),
     content,

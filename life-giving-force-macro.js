@@ -59,7 +59,7 @@ function onUpdateCombat(combat, changed) {
     i => i.name === LIFE_GIVING_FORCE_NAME && i.type === "feat"
   );
 
-  console.log(`Life-Giving Force | Raging: ${isRaging}, Has Feature: ${!!hasLifeGiving}`);
+  if (LGF_DEBUG) console.log(`Life-Giving Force | Raging: ${isRaging}, Has Feature: ${!!hasLifeGiving}`);
 
   if (isRaging && hasLifeGiving) {
     showLifeGivingForceDialog(actor, name);

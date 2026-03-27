@@ -24,7 +24,7 @@ function teardown() {
   if (!game[BOT_HOOK_FLAG]) return;
   const prev = game[BOT_HOOK_FLAG];
   if (prev.combatHookId != null) Hooks.off("updateCombat", prev.combatHookId);
-  game[BOT_HOOK_FLAG] = null;
+  delete game[BOT_HOOK_FLAG];
   console.log("Branches of the Tree macro torn down.");
 }
 

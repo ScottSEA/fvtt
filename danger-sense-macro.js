@@ -44,7 +44,7 @@ function register() {
 
 function onPreRollSavingThrow(config, dialog, message) {
   const actor = config.subject;
-  if (!actor) return;
+  if (!actor?.isOwner) return;
   if (config.ability !== ABILITY_DEX) return;
 
   // Only trigger if the actor actually has the Danger Sense feature

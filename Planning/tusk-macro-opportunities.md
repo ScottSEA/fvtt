@@ -153,28 +153,95 @@
 
 ---
 
+### Priority 3 — New Opportunities
+
+#### 8. Rage Maintenance Warning
+> Rage ends early if you don't attack or take damage by end of your turn.
+
+- **Why automate:** Losing Rage cascades through half the character's kit — rage damage, resistance, Primal Knowledge, Life-Giving Force, Branches, Battering Roots all stop working. Easy to lose track in complex fights.
+- **Trigger:** `updateCombat` — detect when Tusk's turn ends without having attacked or taken damage.
+- **Behavior:** Post a warning in chat: "⚠️ You haven't attacked or taken damage — Rage will end!" Could track attack/damage via `renderChatMessage` and `dnd5e.damageActor` during the turn.
+- **Pattern:** Turn tracking (like Life-Giving Force).
+- **Effort:** Medium
+
+#### 9. Instinctive Pounce Reminder
+> When Rage activates, you can move up to half your speed as part of the bonus action.
+
+- **Why automate:** Easy to forget the free movement. Nearly free to implement since `vitality-surge` already hooks Rage activation.
+- **Trigger:** Piggyback on `dnd5e.postUseActivity` in vitality-surge, or separate macro using same hook.
+- **Behavior:** Append reminder to Vitality Surge chat message or post separate: "🏃 Instinctive Pounce — move up to [half speed] ft."
+- **Pattern:** Simple chat message on activity use.
+- **Effort:** Trivial
+
+#### 10. Battering Roots — Push/Topple Mastery Choice
+> At level 10: on a hit with Heavy/Versatile weapon while raging, activate Push (10 ft) or Topple (prone, STR save).
+
+- **Why automate:** Two-choice mastery override is easy to forget is available while raging. Needs opponent STR save for Topple.
+- **Trigger:** `renderChatMessage` — detect melee hit with Heavy/Versatile weapon while raging.
+- **Behavior:** Inject buttons: "🌳 Push 10 ft" / "🌳 Topple (STR save)". Topple button could prompt target STR save.
+- **Pattern:** Chat button injection (like Charger).
+- **Effort:** Medium
+- **Note:** Verify whether dnd5e ActiveEffect already handles this via weapon mastery system before building.
+
+#### 11. Adamantine Armor Crit Negation Reminder
+> +1 Adamantine Half Plate reduces critical hits against Tusk to normal hits.
+
+- **Why automate:** Forgetting means taking double damage dice unnecessarily.
+- **Trigger:** `renderChatMessage` — detect incoming attack crits against Tusk.
+- **Behavior:** Post reminder: "🛡️ Adamantine Armor — that crit becomes a normal hit!"
+- **Pattern:** Chat message inspection.
+- **Effort:** Low
+- **Note:** Check if dnd5e already handles this via item ActiveEffect. If so, skip.
+
+#### 12. Rage End Cleanup Summary
+> When Rage ends, post a summary of everything that turns off.
+
+- **Why automate:** Purely informational — helps the table remember what changes when Rage drops.
+- **Trigger:** `deleteActiveEffect` — detect Rage effect removal (rage-ring already hooks this).
+- **Behavior:** Post chat message listing deactivated features: rage damage bonus, BPS resistance, Primal Knowledge STR swaps, Life-Giving Force, Branches reactions, Battering Roots reach.
+- **Pattern:** Effect lifecycle hook (extend rage-ring).
+- **Effort:** Low
+
+#### 13. Travel Along the Tree (Level 14 — Future)
+> Bonus action while raging: teleport self + up to 6 willing creatures within 10 ft to unoccupied spaces within 60 ft of you.
+
+- **Why automate:** Multi-target selection and teleport positioning is complex to manage manually.
+- **Trigger:** Manual activation or `dnd5e.postUseActivity` when the feature is used.
+- **Behavior:** Multi-target selection dialog, then teleport tokens to chosen positions.
+- **Pattern:** Custom activity automation with token movement.
+- **Effort:** High
+- **Note:** Pre-plan now; implement when Tusk hits level 14.
+
+---
+
 ### No Macro Needed (Already Automated or Passive)
 
 | Feature | Reason |
 |---------|--------|
 | Feral Instinct | Advantage on initiative via ActiveEffect |
-| Adrenaline Rush | Built-in heal activity in the system |
-| Battering Roots | Passive mastery bonus via ActiveEffect |
+| Adrenaline Rush | Built-in activity with uses tracked by system |
 | Fast Movement | ActiveEffect adds +10 speed |
 | Unarmored Defense | ActiveEffect (Tusk wears armor anyway) |
 | Speedy | ActiveEffect adds +10 speed |
 | Tough | HP bonus baked into max HP |
+| Belt of Fire Giant STR | STR override via ActiveEffect |
 
 ---
 
 ## Implementation Priority Summary
 
-| Priority | Macro | Effort | Impact |
-|----------|-------|--------|--------|
-| 🔴 1 | Relentless Rage + Relentless Endurance | Medium | **Critical** — prevents character death |
-| 🟠 2 | Great Weapon Master — Hew | Low-Medium | **High** — free bonus action attack on crits |
-| 🟡 3 | Reckless Attack Reminder | Low | **Medium** — quality of life |
-| 🟡 4 | Lucky Reminder | Medium | **Medium** — universal, tracking value |
-| 🔵 5 | Brutal Strike Decision Helper | High | **Medium** — streamlines complex choice |
-| 🔵 6 | Branches of the Tree Reminder | Low | **Medium** — simple turn reminder |
-| ⚪ 7 | Charger Charge Attack | High | **Low** — hard to detect movement |
+| Priority | Macro | Effort | Impact | Status |
+|----------|-------|--------|--------|--------|
+| ✅ 1 | Relentless Rage + Relentless Endurance | Medium | **Critical** — prevents character death | ✅ Done |
+| ✅ 2 | Great Weapon Master — Hew | Low-Medium | **High** — free bonus action attack on crits | ✅ Done |
+| ✅ 3 | Reckless Attack Reminder | Low | **Medium** — quality of life | ✅ Done |
+| ✅ 4 | Lucky Reminder | Medium | **Medium** — universal, tracking value | ✅ Done |
+| ✅ 5 | Brutal Strike Decision Helper | High | **Medium** — streamlines complex choice | ✅ Done |
+| ✅ 6 | Branches of the Tree Reminder | Low | **Medium** — simple turn reminder | ✅ Done |
+| ✅ 7 | Charger Charge Attack | High | **Low** — hard to detect movement | ✅ Done |
+| 🟠 8 | Rage Maintenance Warning | Medium | **High** — losing Rage cascades through entire kit | |
+| ⚪ 9 | Instinctive Pounce Reminder | Trivial | **Low** — simple chat reminder | |
+| 🟡 10 | Battering Roots Push/Topple | Medium | **Medium** — mastery choice on melee hits | |
+| ⚪ 11 | Adamantine Crit Negation | Low | **Low-Medium** — may already be handled by system | |
+| ⚪ 12 | Rage End Cleanup Summary | Low | **Low** — informational only | |
+| 🔵 13 | Travel Along the Tree (Lvl 14) | High | **Medium** — future, multi-target teleport | |

@@ -153,9 +153,16 @@ function ensureBrutalStrikeStyles() {
       color: #8b0000;
       font-weight: bold;
       font-size: 11px;
-      margin-bottom: 4px;
+      margin-bottom: 0;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+    }
+
+    .brutal-strike-subheader {
+      color: #666;
+      font-size: 10px;
+      font-style: italic;
+      margin-bottom: 4px;
     }
 
     .brutal-strike-btn-group {
@@ -168,12 +175,19 @@ function ensureBrutalStrikeStyles() {
       background-color: #5c1a1a;
       color: white;
       border: none;
-      padding: 4px 8px;
+      padding: 2px 8px;
       font-size: 11px;
       cursor: pointer;
-      flex: 1 1 auto;
-      min-width: 80px;
+      flex: 1 1 100%;
       text-align: center;
+    }
+
+    .brutal-strike-brief {
+      display: block;
+      font-size: 9px;
+      font-weight: normal;
+      opacity: 0.7;
+      line-height: 1.1;
     }
 
     .brutal-strike-btn:hover:not(:disabled) {
@@ -224,24 +238,28 @@ function ensureBrutalStrikeStyles() {
 const BRUTAL_EFFECTS = {
   forceful: {
     label: "Forceful Blow",
+    brief: "Push 15 ft, advance half speed",
     icon: "fa-hand-fist",
     description: "The target is pushed 15 feet straight away from you. You can then move up to half your Speed straight toward the target without provoking Opportunity Attacks.",
     minLevel: 9,
   },
   hamstring: {
     label: "Hamstring Blow",
+    brief: "Target speed −15 ft",
     icon: "fa-person-falling",
     description: "The target's Speed is reduced by 15 feet until the start of your next turn. A target can be affected by only one Hamstring Blow at a time.",
     minLevel: 9,
   },
   staggering: {
     label: "Staggering Blow",
+    brief: "Disadv. next save, no OAs",
     icon: "fa-bolt",
     description: "The target has Disadvantage on the next saving throw it makes, and it can't make Opportunity Attacks until the start of your next turn.",
     minLevel: 13,
   },
   sundering: {
     label: "Sundering Blow",
+    brief: "Next ally attack gets +5",
     icon: "fa-shield-halved",
     description: "Before the start of your next turn, the next attack roll made by another creature against the target gains a +5 bonus to the roll.",
     minLevel: 13,
@@ -264,11 +282,13 @@ function buildBrutalStrikeButtons(message, ctx) {
       + `data-action="brutal-strike-use" data-effect="${key}" `
       + `data-message-id="${message.id}" `
       + `title="${title}">`
-      + `<i class="fas ${effect.icon}"></i> ${effect.label}</button>`;
+      + `<i class="fas ${effect.icon}"></i> ${effect.label}`
+      + `<span class="brutal-strike-brief">${effect.brief}</span></button>`;
   }
 
   return `<div class="brutal-strike-container">`
     + `<div class="brutal-strike-header">\u2694\uFE0F Brutal Strike</div>`
+    + `<div class="brutal-strike-subheader">(when reckless attacking)</div>`
     + `<div class="brutal-strike-btn-group">${buttons}</div>`
     + `</div>`;
 }
@@ -326,12 +346,7 @@ async function handleBrutalStrike(event, btn) {
 
   if (BRUTAL_DEBUG) console.log("Brutal Strike roll:", roll.formula, "=", roll.total);
 
-  // Show 3D dice if Dice So Nice is active
-  if (game.dice3d) {
-    await game.dice3d.showForRoll(roll, game.user, true);
-  }
-
-  // Build and send the result chat message
+  // Build and send the result chat message (Dice So Nice triggers automatically via toMessage)
   const content = buildResultCard(effect, roll, brutalDice);
   await roll.toMessage({
     author: game.user.id,

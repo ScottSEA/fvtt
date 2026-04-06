@@ -184,9 +184,7 @@ async function handleLethalDamage(actor) {
   const roll = new Roll(formula);
   await roll.evaluate();
 
-  // Show 3D dice if Dice So Nice is active
-  if (game.dice3d) await game.dice3d.showForRoll(roll, game.user, true);
-
+  // Dice So Nice triggers automatically via ChatMessage.create with rolls
   const success = roll.total >= dc;
 
   // Increase DC for next attempt regardless of outcome

@@ -14,19 +14,21 @@
  * melee attack of the turn. If Reckless is already active, a confirmation
  * banner shows on every STR melee attack instead.
  *
- * Uses: dnd5e.preRollAttack + renderRollConfigurationDialog (two-hook
- * dialog pattern).
+ * Uses a single-hook approach: reads all context directly from the dialog
+ * app's config property in renderRollConfigurationDialog, avoiding the
+ * fragile two-hook pending-key pattern that can break when the attack
+ * dialog subclass (AttackRollConfigurationDialog) renders asynchronously.
+ *
+ * Hooks: renderRollConfigurationDialog
  */
 
 let RECKLESS_DEBUG = false;
 
 const RA_HOOK_FLAG = "recklessAttackHookRegistered";
-const RA_PENDING_KEY = "_recklessAttackPending";
 const RA_LAST_ATTACK_KEY = "_recklessAttackLastAttack";
 
 const RECKLESS_ATTACK_NAME = "Reckless Attack";
 
-const HOOK_PRE_ATTACK = "dnd5e.preRollAttack";
 const HOOK_RENDER_DIALOG = "renderRollConfigurationDialog";
 
 const SEL_BUTTONS = ".dialog-buttons";
@@ -40,35 +42,51 @@ register();
 function teardown() {
   if (!game[RA_HOOK_FLAG]) return;
   const prev = game[RA_HOOK_FLAG];
-  if (prev.preAttackHookId != null) Hooks.off(HOOK_PRE_ATTACK, prev.preAttackHookId);
   if (prev.renderHookId != null) Hooks.off(HOOK_RENDER_DIALOG, prev.renderHookId);
   console.log("Reckless Attack macro torn down.");
 }
 
 function register() {
-  const preAttackHookId = Hooks.on(HOOK_PRE_ATTACK, onPreRollAttack);
   const renderHookId = Hooks.on(HOOK_RENDER_DIALOG, onRenderDialog);
-  game[RA_HOOK_FLAG] = { preAttackHookId, renderHookId };
+  game[RA_HOOK_FLAG] = { renderHookId };
   console.log("Reckless Attack macro loaded.");
 }
 
-// ─── Pre-Roll Hook: Flag for Dialog Injection ────────────────────────────────
+// ─── Dialog Banner (single-hook approach) ────────────────────────────────────
 
-function onPreRollAttack(config, dialog, message) {
-  if (RECKLESS_DEBUG) console.log("Reckless Attack | preRollAttack fired:", {
-    config, dialog, message,
-    subject: config.subject,
-    subjectItem: config.subject?.item,
-    subjectActor: config.subject?.item?.actor,
-  });
+const BANNER_REMINDER_STYLE =
+  `color:white; padding:6px 10px; border-radius:4px; ` +
+  `margin:0 0 8px; text-align:center; font-size:12px; background:#7a4a1a;`;
 
-  // Extract activity, item, actor from config
+const BANNER_ACTIVE_STYLE =
+  `color:white; padding:6px 10px; border-radius:4px; ` +
+  `margin:0 0 8px; text-align:center; font-size:12px; background:#2a5c2a;`;
+
+function onRenderDialog(app, html) {
+  // Read roll config directly from the dialog app — no pending key needed
+  const config = app.config;
+  if (!config) return;
+
+  // Only process attack roll dialogs (hookNames includes "attack" for attacks)
+  if (!config.hookNames?.includes("attack")) return;
+
+  const el = html instanceof HTMLElement ? html : html[0] ?? html;
+
+  // Skip if already injected (re-render guard)
+  if (el.querySelector("[data-reckless-banner]")) return;
+
+  // Extract activity, item, actor from the dialog's config
   const activity = config.subject;
   const item = activity?.item;
-  const actor = item?.actor ?? item?.parent;
+  const actor = activity?.actor ?? item?.actor ?? item?.parent;
+
+  if (RECKLESS_DEBUG) console.log("Reckless Attack | renderDialog fired:", {
+    hookNames: config.hookNames, activity, item: item?.name, actor: actor?.name,
+    isOwner: actor?.isOwner,
+  });
 
   if (!actor?.isOwner) return;
-  if (!actor?.system?.abilities) return; // Ensure it's a real Actor5e
+  if (!actor?.system?.abilities) return;
 
   // Must have the Reckless Attack feature
   if (!hasRecklessAttack(actor)) return;
@@ -94,34 +112,19 @@ function onPreRollAttack(config, dialog, message) {
   // Record that an attack happened this turn
   markAttackThisTurn();
 
-  if (RECKLESS_DEBUG) console.log("Reckless Attack | Setting pending flag", { recklessActive });
-
-  // Flag for the dialog banner
-  game[RA_PENDING_KEY] = { recklessActive };
-}
-
-// ─── Dialog Banner ───────────────────────────────────────────────────────────
-
-const BANNER_REMINDER_STYLE =
-  `color:white; padding:6px 10px; border-radius:4px; ` +
-  `margin:0 0 8px; text-align:center; font-size:12px; background:#7a4a1a;`;
-
-const BANNER_ACTIVE_STYLE =
-  `color:white; padding:6px 10px; border-radius:4px; ` +
-  `margin:0 0 8px; text-align:center; font-size:12px; background:#2a5c2a;`;
-
-function onRenderDialog(app, html) {
-  const pending = game[RA_PENDING_KEY];
-  if (!pending) return;
-  delete game[RA_PENDING_KEY];
-
-  const el = html instanceof HTMLElement ? html : html[0] ?? html;
+  // Find the buttons container
   const buttons = el.querySelector(SEL_BUTTONS);
-  if (!buttons) return;
+  if (!buttons) {
+    if (RECKLESS_DEBUG) console.log("Reckless Attack | No .dialog-buttons found in dialog");
+    return;
+  }
+
+  if (RECKLESS_DEBUG) console.log("Reckless Attack | Injecting banner", { recklessActive });
 
   const banner = document.createElement("div");
+  banner.setAttribute("data-reckless-banner", "true");
 
-  if (pending.recklessActive) {
+  if (recklessActive) {
     banner.style.cssText = BANNER_ACTIVE_STYLE;
     banner.innerHTML =
       `<h3 style="margin:0 0 4px;">⚔️ Reckless Attack Active</h3>` +

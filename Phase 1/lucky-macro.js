@@ -72,7 +72,12 @@ function register() {
 // ─── Pre-Roll Hook (all d20 rolls) ──────────────────────────────────────────
 
 function onPreRollD20(config, dialog, message) {
-  const actor = config.subject;
+  // For skill/save/check hooks, config.subject is the Actor directly.
+  // For attack hooks, config.subject is the AttackActivity — navigate to actor.
+  let actor = config.subject;
+  if (actor && !actor.items) {
+    actor = actor.actor ?? actor.item?.actor ?? actor.item?.parent;
+  }
   if (!actor?.isOwner) return;
 
   const luckyItem = getLuckyFeat(actor);
@@ -91,11 +96,31 @@ const BASE_BANNER_STYLE =
   `margin:0 0 8px; text-align:center; font-size:12px;`;
 
 function onRenderDialog(app, html) {
-  const pending = game[LUCKY_PENDING_KEY];
+  let pending = game[LUCKY_PENDING_KEY];
+
+  // Fallback for attack dialogs: if preRollAttack didn't set the key
+  // (timing issue with AttackRollConfigurationDialog), resolve from app.config
+  if (!pending && app.config?.hookNames?.includes("attack")) {
+    const activity = app.config.subject;
+    const actor = activity?.actor ?? activity?.item?.actor ?? activity?.item?.parent;
+    if (actor?.isOwner) {
+      const luckyItem = getLuckyFeat(actor);
+      if (luckyItem) {
+        const remaining = getLuckPointsRemaining(luckyItem);
+        pending = { luckyItem, remaining };
+        if (LUCKY_DEBUG) console.log("Lucky | resolved from attack dialog config fallback");
+      }
+    }
+  }
+
   if (!pending) return;
   delete game[LUCKY_PENDING_KEY];
 
   const el = html instanceof HTMLElement ? html : html[0] ?? html;
+
+  // Re-render guard
+  if (el.querySelector("[data-lucky-banner]")) return;
+
   const buttons = el.querySelector(SEL_BUTTONS);
   if (!buttons) return;
 

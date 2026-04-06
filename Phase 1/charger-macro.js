@@ -165,16 +165,14 @@ async function rollChargerDamage(actor) {
   const roll = new Roll("1d8");
   await roll.evaluate();
 
-  if (game.dice3d) {
-    await game.dice3d.showForRoll(roll, game.user, true);
-  }
-
+  // Dice So Nice triggers automatically via toMessage
   const content = `
     <div class="charger-result-card">
       <h4 class="charger-result-title">⚡ Charger — Bonus Damage</h4>
       <p class="charger-result-desc">
         Dashed and charged 10+ ft in a straight line before hitting with a melee attack.
       </p>
+      <p class="charger-result-total">+${roll.total} damage</p>
     </div>`;
 
   await roll.toMessage({
@@ -273,6 +271,13 @@ function ensureChargerStyles() {
     .charger-result-desc {
       margin: 0;
       font-size: 0.9em;
+    }
+
+    .charger-result-total {
+      margin: 4px 0 0;
+      font-size: 1.8em;
+      font-weight: bold;
+      color: #2a5a1a;
     }
   `;
   document.head.appendChild(style);

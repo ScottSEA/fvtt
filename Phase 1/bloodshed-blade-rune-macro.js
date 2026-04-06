@@ -383,11 +383,14 @@ function resolveActorFromMessage(message) {
 }
 
 function isBloodshedBladeAttackMessage(message, el) {
-  const text = el.textContent || "";
+  // Must be a proper dnd5e attack roll — not just any message mentioning "attack"
   const isAttackRoll = message.rolls?.some((roll) => roll.options?.type === "attack") ||
     message.flags?.dnd5e?.roll?.type === "attack" ||
-    text.toLowerCase().includes("attack");
+    message.flags?.dnd5e?.activity?.type === "attack";
 
+  if (!isAttackRoll) return false;
+
+  const text = el.textContent || "";
   const hasName = !!(
     message.item?.name?.includes(BLOODSHED_BLADE_ITEM_NAME) ||
     message.flavor?.includes(BLOODSHED_BLADE_ITEM_NAME) ||
@@ -395,7 +398,7 @@ function isBloodshedBladeAttackMessage(message, el) {
     text.includes(BLOODSHED_BLADE_ITEM_NAME)
   );
 
-  return isAttackRoll && hasName;
+  return hasName;
 }
 
 function extractAttackRollData(message) {

@@ -77,8 +77,8 @@ function analyzeForBrutalStrike(message) {
   const barbLevel = getBarbarianLevel(actor);
   if (barbLevel < 9) return null;
 
-  // Actor must have Reckless effect active, or attack rolled with advantage
-  if (!isRecklessOrAdvantage(actor, message)) return null;
+  // Actor must have Reckless Attack active (effect or confirmed this turn)
+  if (!isRecklessThisTurn(actor)) return null;
 
   const usedThisTurn = hasUsedBrutalStrikeThisTurn();
 
@@ -102,19 +102,20 @@ function isWeaponAttackMessage(message) {
   return isWeapon;
 }
 
-function isRecklessOrAdvantage(actor, message) {
-  // Primary: Reckless effect active on actor
+function isRecklessThisTurn(actor) {
+  // Check 1: Reckless effect active on actor (covers subsequent attacks if effect applied)
   if (isRecklessActive(actor)) return true;
 
-  // Fallback: attack was rolled with advantage (common indicator of Reckless)
-  const roll = message.rolls?.[0];
-  if (roll?.options?.advantageMode === 1) return true;
-
-  // Fallback: check D20 die term for advantage
-  const d20 = roll?.terms?.find(t => t.faces === 20);
-  if (d20?.options?.advantageMode === 1) return true;
-
-  return false;
+  // Check 2: Reckless was confirmed via button this turn
+  const confirmed = game._recklessAttackConfirmed;
+  if (!confirmed) return false;
+  const combat = game.combat;
+  if (combat?.started) {
+    return confirmed.combatId === combat.id
+      && confirmed.round === combat.round
+      && confirmed.turn === combat.turn;
+  }
+  return confirmed.timestamp && (Date.now() - confirmed.timestamp < 60000);
 }
 
 function isRecklessActive(actor) {
@@ -153,16 +154,9 @@ function ensureBrutalStrikeStyles() {
       color: #8b0000;
       font-weight: bold;
       font-size: 11px;
-      margin-bottom: 0;
+      margin-bottom: 4px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-    }
-
-    .brutal-strike-subheader {
-      color: #666;
-      font-size: 10px;
-      font-style: italic;
-      margin-bottom: 4px;
     }
 
     .brutal-strike-btn-group {
@@ -175,19 +169,12 @@ function ensureBrutalStrikeStyles() {
       background-color: #5c1a1a;
       color: white;
       border: none;
-      padding: 2px 8px;
+      padding: 4px 8px;
       font-size: 11px;
       cursor: pointer;
-      flex: 1 1 100%;
+      flex: 1 1 auto;
+      min-width: 80px;
       text-align: center;
-    }
-
-    .brutal-strike-brief {
-      display: block;
-      font-size: 9px;
-      font-weight: normal;
-      opacity: 0.7;
-      line-height: 1.1;
     }
 
     .brutal-strike-btn:hover:not(:disabled) {
@@ -282,13 +269,11 @@ function buildBrutalStrikeButtons(message, ctx) {
       + `data-action="brutal-strike-use" data-effect="${key}" `
       + `data-message-id="${message.id}" `
       + `title="${title}">`
-      + `<i class="fas ${effect.icon}"></i> ${effect.label}`
-      + `<span class="brutal-strike-brief">${effect.brief}</span></button>`;
+      + `<i class="fas ${effect.icon}"></i> ${effect.label}</button>`;
   }
 
   return `<div class="brutal-strike-container">`
     + `<div class="brutal-strike-header">\u2694\uFE0F Brutal Strike</div>`
-    + `<div class="brutal-strike-subheader">(when reckless attacking)</div>`
     + `<div class="brutal-strike-btn-group">${buttons}</div>`
     + `</div>`;
 }

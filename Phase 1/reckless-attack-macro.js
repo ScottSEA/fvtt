@@ -26,12 +26,14 @@ let RECKLESS_DEBUG = false;
 
 const RA_HOOK_FLAG = "recklessAttackHookRegistered";
 const RA_LAST_ATTACK_KEY = "_recklessAttackLastAttack";
+const RA_CONFIRMED_KEY = "_recklessAttackConfirmed";
 
 const RECKLESS_ATTACK_NAME = "Reckless Attack";
 
 const HOOK_RENDER_DIALOG = "renderRollConfigurationDialog";
 
 const SEL_BUTTONS = ".dialog-buttons";
+const SEL_ADVANTAGE = "[data-action='advantage']";
 
 // --- Entry point: tear down previous registration, then re-register ---
 teardown();
@@ -54,13 +56,16 @@ function register() {
 
 // ─── Dialog Banner (single-hook approach) ────────────────────────────────────
 
-const BANNER_REMINDER_STYLE =
+const BANNER_BUTTON_STYLE =
   `color:white; padding:6px 10px; border-radius:4px; ` +
-  `margin:0 0 8px; text-align:center; font-size:12px; background:#7a4a1a;`;
+  `margin:0 0 8px; text-align:center; font-size:12px; background:#7a4a1a; ` +
+  `width:100%; border:1px solid #a06828; cursor:pointer; display:flex; ` +
+  `flex-direction:column; align-items:center;`;
 
 const BANNER_ACTIVE_STYLE =
   `color:white; padding:6px 10px; border-radius:4px; ` +
-  `margin:0 0 8px; text-align:center; font-size:12px; background:#2a5c2a;`;
+  `margin:0 0 8px; text-align:center; font-size:12px; background:#2a5c2a; ` +
+  `display:flex; flex-direction:column; align-items:center;`;
 
 function onRenderDialog(app, html) {
   // Read roll config directly from the dialog app — no pending key needed
@@ -100,10 +105,10 @@ function onRenderDialog(app, html) {
   // Must be the actor's turn in combat (or outside of combat)
   if (!isActorsTurn(actor)) return;
 
-  // Check if Reckless Attack is already active
-  const recklessActive = isRecklessActive(actor);
+  // Check if Reckless Attack is already active (effect OR confirmed this turn)
+  const recklessActive = isRecklessActive(actor) || isRecklessConfirmedThisTurn();
 
-  // If Reckless is not yet active, only remind on the first attack of the turn
+  // If Reckless is not yet active, only offer on the first attack of the turn
   if (!recklessActive && !isFirstAttackOfTurn()) {
     if (RECKLESS_DEBUG) console.log("Reckless Attack | Skipping — not first attack and Reckless not active");
     return;
@@ -119,25 +124,40 @@ function onRenderDialog(app, html) {
     return;
   }
 
-  if (RECKLESS_DEBUG) console.log("Reckless Attack | Injecting banner", { recklessActive });
-
-  const banner = document.createElement("div");
-  banner.setAttribute("data-reckless-banner", "true");
-
   if (recklessActive) {
+    // Green informational banner — Reckless is already active this turn
+    if (RECKLESS_DEBUG) console.log("Reckless Attack | Injecting active banner");
+    const banner = document.createElement("div");
+    banner.setAttribute("data-reckless-banner", "true");
     banner.style.cssText = BANNER_ACTIVE_STYLE;
     banner.innerHTML =
-      `<h3 style="margin:0 0 4px;">⚔️ Reckless Attack Active</h3>` +
-      `<p style="margin:0;">You have <strong>Advantage</strong> on this STR attack.</p>`;
+      `<h3 style="margin:0 0 2px;">⚔️ Reckless Attack Active</h3>` +
+      `<p style="margin:0;">You have <strong>Advantage</strong> on this STR attack</p>`;
+    buttons.insertAdjacentElement("beforebegin", banner);
   } else {
-    banner.style.cssText = BANNER_REMINDER_STYLE;
-    banner.innerHTML =
-      `<h3 style="margin:0 0 4px;">⚔️ Reckless Attack</h3>` +
-      `<p style="margin:0;">You can gain <strong>Advantage</strong> on this STR attack. ` +
-      `Attacks against you will have advantage until your next turn.</p>`;
-  }
+    // Clickable button — first attack, rolls with advantage
+    const advButton = buttons.querySelector(SEL_ADVANTAGE);
+    if (!advButton) {
+      if (RECKLESS_DEBUG) console.log("Reckless Attack | No advantage button found in dialog");
+      return;
+    }
 
-  buttons.insertAdjacentElement("beforebegin", banner);
+    if (RECKLESS_DEBUG) console.log("Reckless Attack | Injecting reckless button");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.setAttribute("data-reckless-banner", "true");
+    btn.style.cssText = BANNER_BUTTON_STYLE;
+    btn.innerHTML =
+      `<h3 style="margin:0 0 2px;">⚔️ Reckless Attack</h3>` +
+      `<p style="margin:0;">Click to roll with <strong>Advantage</strong></p>`;
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      markRecklessConfirmed();
+      advButton.click(); // Sets advantage AND submits the dialog
+    });
+    buttons.insertAdjacentElement("beforebegin", btn);
+  }
 }
 
 // ─── Melee Weapon Detection ──────────────────────────────────────────────────
@@ -231,4 +251,29 @@ function markAttackThisTurn() {
     round: combat.round,
     turn: combat.turn,
   };
+}
+
+function markRecklessConfirmed() {
+  const combat = game.combat;
+  if (combat?.started) {
+    game[RA_CONFIRMED_KEY] = {
+      combatId: combat.id,
+      round: combat.round,
+      turn: combat.turn,
+    };
+  } else {
+    game[RA_CONFIRMED_KEY] = { timestamp: Date.now() };
+  }
+}
+
+function isRecklessConfirmedThisTurn() {
+  const confirmed = game[RA_CONFIRMED_KEY];
+  if (!confirmed) return false;
+  const combat = game.combat;
+  if (combat?.started) {
+    return confirmed.combatId === combat.id
+      && confirmed.round === combat.round
+      && confirmed.turn === combat.turn;
+  }
+  return confirmed.timestamp && (Date.now() - confirmed.timestamp < 60000);
 }

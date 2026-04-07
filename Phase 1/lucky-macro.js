@@ -141,9 +141,8 @@ function buildLuckyButton(luckyItem, remaining, advButton) {
     `border:1px solid #4a9; cursor:pointer; display:flex; ` +
     `flex-direction:column; align-items:center;`;
   btn.innerHTML =
-    `<h3 style="margin:0 0 4px;">🍀 Lucky — ${remaining} Luck ` +
-    `Point${remaining !== 1 ? "s" : ""} remaining</h3>` +
-    `<p style="margin:0;">Click to spend 1 for <strong>Advantage</strong></p>`;
+    `<h3 style="margin:0 0 2px;">🍀 Lucky</h3>` +
+    `<p style="margin:0;">Click to spend 1 for <strong>Advantage</strong> <span style="font-size:10px; opacity:0.7;">(${remaining} remaining)</span></p>`;
   btn.addEventListener("click", async (event) => {
     event.preventDefault();
     event.stopPropagation();

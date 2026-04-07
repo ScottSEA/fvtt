@@ -37,6 +37,7 @@ function teardown() {
   if (!game[CHARGER_HOOK_FLAG]) return;
   const prev = game[CHARGER_HOOK_FLAG];
   if (prev.renderHookId != null) Hooks.off("renderChatMessage", prev.renderHookId);
+  if (prev.dialogHookId != null) Hooks.off("renderRollConfigurationDialog", prev.dialogHookId);
   if (prev.clickHandler) document.removeEventListener("click", prev.clickHandler);
   const oldStyle = document.getElementById("charger-macro-style");
   if (oldStyle) oldStyle.remove();
@@ -46,13 +47,45 @@ function teardown() {
 function register() {
   ensureChargerStyles();
   const renderHookId = Hooks.on("renderChatMessage", onRenderChatMessage);
+  const dialogHookId = Hooks.on("renderRollConfigurationDialog", onRenderDialog);
   const clickHandler = onDocumentClick;
   document.addEventListener("click", clickHandler);
-  game[CHARGER_HOOK_FLAG] = { renderHookId, clickHandler };
+  game[CHARGER_HOOK_FLAG] = { renderHookId, dialogHookId, clickHandler };
   console.log("Charger macro loaded.");
 }
 
 // ─── Hook & Event Handlers ───────────────────────────────────────────────────
+
+function onRenderDialog(app, html) {
+  const config = app.config;
+  if (!config) return;
+  if (!config.hookNames?.includes("attack")) return;
+
+  const el = html instanceof HTMLElement ? html : html[0] ?? html;
+  if (el.querySelector("[data-charger-banner]")) return;
+
+  const activity = config.subject;
+  const item = activity?.item;
+  const actor = activity?.actor ?? item?.actor ?? item?.parent;
+
+  if (!actor?.isOwner) return;
+  if (!actorHasChargerFeat(actor)) return;
+  if (!isMeleeWeaponItem(item, config)) return;
+
+  const buttons = el.querySelector(".dialog-buttons");
+  if (!buttons) return;
+
+  const banner = document.createElement("div");
+  banner.setAttribute("data-charger-banner", "true");
+  banner.style.cssText =
+    `color:white; padding:6px 10px; border-radius:4px; ` +
+    `margin:0 0 8px; text-align:center; font-size:12px; background:#2a5a1a; ` +
+    `display:flex; flex-direction:column; align-items:center;`;
+  banner.innerHTML =
+    `<h3 style="margin:0 0 2px;">\u26A1 Charger</h3>` +
+    `<p style=\"margin:0;\">Dash + move 10' straight line for <strong>+1d8 damage</strong><br>or push 10 ft</p>`;
+  buttons.insertAdjacentElement("beforebegin", banner);
+}
 
 function onRenderChatMessage(message, html) {
   const el = html instanceof HTMLElement ? html : html[0] ?? html;
@@ -284,6 +317,17 @@ function ensureChargerStyles() {
 }
 
 // ─── Message Detection ───────────────────────────────────────────────────────
+
+function isMeleeWeaponItem(item, config) {
+  if (!item) return false;
+  const weaponType = item.system?.type?.value;
+  if (!weaponType) return false;
+  const isMelee = weaponType.endsWith("M") || weaponType === "natural";
+  if (!isMelee) return false;
+  const attackMode = config.attackMode ?? config.rolls?.[0]?.options?.attackMode;
+  if (attackMode === "thrown") return false;
+  return true;
+}
 
 function analyzeForCharger(message, el) {
   const actor = resolveActorFromMessage(message);

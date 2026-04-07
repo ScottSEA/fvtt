@@ -258,11 +258,10 @@ async function handleGrazeApply(event, btn) {
   btn.innerHTML = `<i class="fas fa-check"></i> Graze Applied`;
   btn.classList.add("graze-btn-used");
 
-  // Post damage as a roll message so dnd5e "Apply Damage" works
+  // Post damage with roll attached (for dnd5e Apply Damage) but suppress sound
   const roll = new Roll(`${abilityMod}`);
   await roll.evaluate();
 
-  // Dice So Nice triggers automatically via toMessage
   const content = `
     <div class="graze-result-card">
       <h4 class="graze-result-title">🗡️ Graze — ${weaponName}</h4>
@@ -271,12 +270,14 @@ async function handleGrazeApply(event, btn) {
       </p>
     </div>`;
 
-  await roll.toMessage({
+  await ChatMessage.create({
     author: game.user.id,
     speaker: ChatMessage.getSpeaker({ actor }),
     content,
-    flavor: `Graze — ${weaponName}`,
+    rolls: [roll],
+    sound: null,
     style: (CONST.CHAT_MESSAGE_STYLES ?? CONST.CHAT_MESSAGE_TYPES).OTHER,
+    "flags.dnd5e.roll": { type: "damage" },
   });
 
   if (GRAZE_DEBUG) console.log(`Graze | Applied ${abilityMod} ${damageType} damage.`);

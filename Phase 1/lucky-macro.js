@@ -32,6 +32,7 @@ const HOOK_PRE_ROLL_ATTACK = "dnd5e.preRollAttack";
 const HOOK_PRE_ROLL_SAVE = "dnd5e.preRollSavingThrowV2";
 const HOOK_PRE_ROLL_ABILITY = "dnd5e.preRollAbilityCheck";
 const HOOK_PRE_ROLL_SKILL = "dnd5e.preRollSkill";
+const HOOK_PRE_ROLL_TOOL = "dnd5e.preRollToolV2";
 const HOOK_RENDER_DIALOG = "renderRollConfigurationDialog";
 const HOOK_RENDER_CHAT = "dnd5e.renderChatMessage";
 
@@ -60,6 +61,7 @@ function register() {
     { hook: HOOK_PRE_ROLL_SAVE, id: Hooks.on(HOOK_PRE_ROLL_SAVE, onPreRollD20) },
     { hook: HOOK_PRE_ROLL_ABILITY, id: Hooks.on(HOOK_PRE_ROLL_ABILITY, onPreRollD20) },
     { hook: HOOK_PRE_ROLL_SKILL, id: Hooks.on(HOOK_PRE_ROLL_SKILL, onPreRollD20) },
+    { hook: HOOK_PRE_ROLL_TOOL, id: Hooks.on(HOOK_PRE_ROLL_TOOL, onPreRollD20) },
     { hook: HOOK_RENDER_DIALOG, id: Hooks.on(HOOK_RENDER_DIALOG, onRenderDialog) },
     { hook: HOOK_RENDER_CHAT, id: Hooks.on(HOOK_RENDER_CHAT, onRenderChatMessage) },
   ];
@@ -98,17 +100,20 @@ const BASE_BANNER_STYLE =
 function onRenderDialog(app, html) {
   let pending = game[LUCKY_PENDING_KEY];
 
-  // Fallback for attack dialogs: if preRollAttack didn't set the key
-  // (timing issue with AttackRollConfigurationDialog), resolve from app.config
-  if (!pending && app.config?.hookNames?.includes("attack")) {
-    const activity = app.config.subject;
-    const actor = activity?.actor ?? activity?.item?.actor ?? activity?.item?.parent;
+  // Fallback: if preRoll hook didn't set the key (timing issues, or
+  // unhooked roll types like tools), resolve from app.config directly
+  if (!pending && app.config) {
+    let actor = app.config.subject;
+    // For attack rolls, subject is an Activity — navigate to actor
+    if (actor && !actor.items) {
+      actor = actor.actor ?? actor.item?.actor ?? actor.item?.parent;
+    }
     if (actor?.isOwner) {
       const luckyItem = getLuckyFeat(actor);
       if (luckyItem) {
         const remaining = getLuckPointsRemaining(luckyItem);
         pending = { luckyItem, remaining };
-        if (LUCKY_DEBUG) console.log("Lucky | resolved from attack dialog config fallback");
+        if (LUCKY_DEBUG) console.log("Lucky | resolved from dialog config fallback");
       }
     }
   }
@@ -120,6 +125,26 @@ function onRenderDialog(app, html) {
 
   // Re-render guard
   if (el.querySelector("[data-lucky-banner]")) return;
+
+  // Skip if this is a STR check/save/skill while raging — Raging Effects already grants advantage
+  const hookNames = app.config?.hookNames ?? [];
+  if (!hookNames.includes("attack") && app.config?.ability === "str") {
+    const rollActor = app.config?.subject;
+    if (rollActor?.items && isActorRagingForLucky(rollActor)) {
+      if (LUCKY_DEBUG) console.log("Lucky | skipping — raging STR advantage already applies");
+      return;
+    }
+  }
+
+  // Skip if this is a DEX save with Danger Sense — already has advantage
+  if (!hookNames.includes("attack") && app.config?.ability === "dex"
+      && hookNames.includes("SavingThrow")) {
+    const rollActor = app.config?.subject;
+    if (rollActor?.items?.some(i => i.name === "Danger Sense" && i.type === "feat")) {
+      if (LUCKY_DEBUG) console.log("Lucky | skipping — Danger Sense advantage already applies");
+      return;
+    }
+  }
 
   const buttons = el.querySelector(SEL_BUTTONS);
   if (!buttons) return;
@@ -340,4 +365,13 @@ async function consumeLuckPoint(luckyItem) {
       `Lucky | Consumed 1 point. Now ${spent + 1}/${uses.max} spent.`
     );
   }
+}
+
+// ─── Rage Detection (for suppressing Lucky on STR rolls) ─────────────────────
+
+function isActorRagingForLucky(actor) {
+  if (!actor) return false;
+  if (actor.statuses?.has("raging")) return true;
+  const effects = actor.appliedEffects ?? actor.effects;
+  return effects?.some(e => e.name === "Rage" && !e.disabled) ?? false;
 }

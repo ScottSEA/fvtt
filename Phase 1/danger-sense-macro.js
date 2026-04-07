@@ -76,4 +76,11 @@ function onRenderDialog(app, html) {
     `<h3 style="margin:0 0 4px;">⚡ Danger Sense Active</h3>` +
     `<p style="margin:0;">You have <strong>Advantage</strong>!</p>`;
   buttons.insertAdjacentElement("beforebegin", banner);
+
+  // Highlight ADVANTAGE button to match the banner
+  if (advButton) {
+    advButton.style.background = "#1a3a5c";
+    advButton.style.color = "white";
+    advButton.style.borderColor = "#1a3a5c";
+  }
 }

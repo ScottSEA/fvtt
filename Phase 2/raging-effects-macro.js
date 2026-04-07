@@ -65,7 +65,7 @@ function onRenderDialog(app, html) {
   if (!isActorRaging(actor)) return;
 
   // Determine label from hookNames
-  const rollType = hookNames.includes("savingThrow") || hookNames.includes("save")
+  const rollType = hookNames.includes("SavingThrow")
     ? "Saving Throw"
     : hookNames.includes("skill")
     ? "Skill Check"
@@ -83,6 +83,14 @@ function onRenderDialog(app, html) {
     `<h3 style="margin:0 0 4px;">🔥 RAGING!</h3>` +
     `<p style="margin:0;">You have <strong>Advantage</strong> on this STR ${rollType}!</p>`;
   buttons.insertAdjacentElement("beforebegin", banner);
+
+  // Highlight ADVANTAGE button to match the banner
+  const advBtn = buttons.querySelector("[data-action='advantage']");
+  if (advBtn) {
+    advBtn.style.background = "#8b1a1a";
+    advBtn.style.color = "white";
+    advBtn.style.borderColor = "#8b1a1a";
+  }
 }
 
 // ─── Rage Detection ──────────────────────────────────────────────────────────

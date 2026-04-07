@@ -73,7 +73,8 @@ function isActorRaging(actor) {
   // Check for "raging" status (set by Rage active effect)
   if (actor.statuses?.has("raging")) return true;
   // Fallback: look for an enabled effect named "Rage"
-  return actor.effects?.some(e => e.name === "Rage" && !e.disabled) ?? false;
+  const effects = actor.appliedEffects ?? actor.effects;
+  return effects?.some(e => e.name === "Rage" && !e.disabled) ?? false;
 }
 
 // ─── Rage Damage Bonus ───────────────────────────────────────────────────────

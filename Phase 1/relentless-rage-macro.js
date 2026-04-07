@@ -251,7 +251,8 @@ function onRestCompleted(actor, result, config) {
 function isActorRaging(actor) {
   if (!actor) return false;
   if (actor.statuses?.has("raging")) return true;
-  return actor.effects?.some(e => e.name === "Rage" && !e.disabled) ?? false;
+  const effects = actor.appliedEffects ?? actor.effects;
+  return effects?.some(e => e.name === "Rage" && !e.disabled) ?? false;
 }
 
 // ─── Barbarian Level ─────────────────────────────────────────────────────────

@@ -740,3 +740,4 @@ async function updateHitDieSpent(actor, delta, hdType = null) {
     }
   }
 }
+// END: BLOODSHED BLADE RUNE INVOCATION MACRO

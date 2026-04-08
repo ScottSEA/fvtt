@@ -401,3 +401,4 @@ function ensureBRStyles() {
   `;
   document.head.appendChild(style);
 }
+// END: BATTERING ROOTS MACRO

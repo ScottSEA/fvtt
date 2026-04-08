@@ -392,3 +392,4 @@ function markBrutalStrikeUsed() {
     turn: combat.turn,
   };
 }
+// END: BRUTAL STRIKE DECISION HELPER MACRO

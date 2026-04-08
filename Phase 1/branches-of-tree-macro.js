@@ -145,3 +145,4 @@ function buildReminderHtml(creatureName, distance) {
     `</div>`
   );
 }
+// END: BRANCHES OF THE TREE MACRO

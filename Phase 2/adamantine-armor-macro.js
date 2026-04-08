@@ -108,7 +108,6 @@ function findTargetedAdamantineActors(targets, attackerActorId) {
       const actor = resolveActorFromTarget(t);
       if (!actor) continue;
       if (!actor.isOwner) continue;
-      if (actor.id === attackerActorId) continue;
 
       const armorName = getAdamantineArmorName(actor);
       if (armorName) results.push({ actor, armorName });
@@ -118,7 +117,6 @@ function findTargetedAdamantineActors(targets, attackerActorId) {
     for (const actor of game.actors) {
       if (!actor.isOwner) continue;
       if (actor.type !== "character") continue;
-      if (actor.id === attackerActorId) continue;
 
       const armorName = getAdamantineArmorName(actor);
       if (armorName) results.push({ actor, armorName });
@@ -191,3 +189,4 @@ function postReminder(actor, armorName) {
     type: CONST.CHAT_MESSAGE_STYLES.OTHER,
   });
 }
+// END: ADAMANTINE ARMOR REMINDER MACRO

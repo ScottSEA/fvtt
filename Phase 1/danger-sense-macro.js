@@ -84,3 +84,4 @@ function onRenderDialog(app, html) {
     advButton.style.borderColor = "#1a3a5c";
   }
 }
+// END: DANGER SENSE MACRO

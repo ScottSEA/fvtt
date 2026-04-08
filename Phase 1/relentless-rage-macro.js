@@ -277,3 +277,4 @@ function getConSaveBonus(actor) {
   const profBonus = actor.system.attributes?.prof ?? 0;
   return conMod + (isProficient ? profBonus : 0);
 }
+// END: RELENTLESS RAGE + RELENTLESS ENDURANCE MACRO

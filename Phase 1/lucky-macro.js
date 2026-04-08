@@ -375,3 +375,4 @@ function isActorRagingForLucky(actor) {
   const effects = actor.appliedEffects ?? actor.effects;
   return effects?.some(e => e.name === "Rage" && !e.disabled) ?? false;
 }
+// END: LUCKY FEAT REMINDER MACRO

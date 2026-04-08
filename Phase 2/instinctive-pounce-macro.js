@@ -140,3 +140,4 @@ async function showPounceReminder(actor) {
     whisper: [game.user.id],
   });
 }
+// END: INSTINCTIVE POUNCE MACRO

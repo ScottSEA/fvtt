@@ -36,7 +36,7 @@ function teardown() {
 function register() {
   const activityHookId = Hooks.on("dnd5e.postUseActivity", onPostUseActivity);
   game[TATT_HOOK_FLAG] = { activityHookId };
-  console.log("Travel Along the Tree macro loaded (INACTIVE — requires level 14).");
+  console.log("Travel Along the Tree macro loaded.");
 }
 
 // ─── Activity Hook ───────────────────────────────────────────────────────────
@@ -50,6 +50,7 @@ function onPostUseActivity(activity, usageConfig, results) {
   if (
     !isFeatureActivity(item, activity)
     || !isOwner(actor)
+    || !meetsLevelRequirement(actor, 14)
     || !isActorRaging(actor)
     || !hasFeature(actor, TATT_FEATURE_NAME)
   ) return;
@@ -84,6 +85,15 @@ function isActorRaging(actor) {
 
 function hasFeature(actor, name) {
   return actor.items?.some(i => i.name === name && i.type === "feat") ?? false;
+}
+
+function meetsLevelRequirement(actor, requiredLevel) {
+  const barbLevel = actor.classes?.barbarian?.system?.levels ?? 0;
+  if (barbLevel < requiredLevel) {
+    if (TATT_DEBUG) console.log(`TATT | Barbarian level ${barbLevel} < ${requiredLevel}, skipping.`);
+    return false;
+  }
+  return true;
 }
 
 // ─── Distance Measurement ────────────────────────────────────────────────────
@@ -206,3 +216,4 @@ function postTeleportMessage(actor, companionNames) {
     content,
   });
 }
+// END: TRAVEL ALONG THE TREE MACRO

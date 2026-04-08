@@ -220,10 +220,8 @@ const TAN_BAG_CREATURES = [
     style: (CONST.CHAT_MESSAGE_STYLES ?? CONST.CHAT_MESSAGE_TYPES).OTHER,
   });
 
-  // Post individual stat cards as GM whispers
+  // Post individual stat cards as GM-only whispers
   const gmIds = game.users.filter(u => u.isGM).map(u => u.id);
-  // Include self so the player can also see the stat cards
-  const whisperIds = [...new Set([...gmIds, game.user.id])];
 
   for (const { creature } of results) {
     const card = buildStatCard(creature);
@@ -232,7 +230,7 @@ const TAN_BAG_CREATURES = [
       user: game.user.id,
       speaker: ChatMessage.getSpeaker({ actor }),
       content: card,
-      whisper: whisperIds,
+      whisper: gmIds,
       style: (CONST.CHAT_MESSAGE_STYLES ?? CONST.CHAT_MESSAGE_TYPES).OTHER,
     });
   }
@@ -401,3 +399,4 @@ function ensureBagStyles() {
   `;
   document.head.appendChild(style);
 }
+// END: BAG OF TRICKS THREE-FER MACRO

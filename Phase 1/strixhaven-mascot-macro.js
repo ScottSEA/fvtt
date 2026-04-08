@@ -142,3 +142,4 @@ async function consumeMascotUse(mascot) {
   if (spent >= uses.max) return;
   await mascot.update({ "system.uses.spent": spent + 1 });
 }
+// END: CUDDLY STRIXHAVEN MASCOT MACRO

@@ -282,3 +282,4 @@ async function updateOriginalMessage(message, newRoll, originalTotal) {
     },
   });
 }
+// END: BUTCHER'S BIB DAMAGE REROLL MACRO

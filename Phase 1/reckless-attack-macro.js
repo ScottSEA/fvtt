@@ -277,3 +277,4 @@ function isRecklessConfirmedThisTurn() {
   }
   return confirmed.timestamp && (Date.now() - confirmed.timestamp < 60000);
 }
+// END: RECKLESS ATTACK REMINDER MACRO

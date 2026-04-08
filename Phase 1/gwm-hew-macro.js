@@ -364,3 +364,4 @@ function ensureHewStyles() {
   `;
   document.head.appendChild(style);
 }
+// END: GREAT WEAPON MASTER — HEW MACRO

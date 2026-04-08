@@ -394,3 +394,4 @@ function ensureGrazeStyles() {
   `;
   document.head.appendChild(style);
 }
+// END: GRAZE MASTERY MACRO

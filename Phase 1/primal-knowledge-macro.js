@@ -130,3 +130,4 @@ function hasPrimalKnowledge(actor) {
     i => i.name === PRIMAL_KNOWLEDGE_NAME && i.type === "feat"
   ) ?? false;
 }
+// END: PRIMAL KNOWLEDGE MACRO

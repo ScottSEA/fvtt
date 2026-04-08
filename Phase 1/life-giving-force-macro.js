@@ -153,4 +153,4 @@ async function showLifeGivingForceDialog(actor, name) {
     ui.notifications.error("🌳 Life-Giving Force: Error rolling healing. Check console.");
   }
 }
-
+// END: LIFE-GIVING FORCE MACRO

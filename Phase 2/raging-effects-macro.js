@@ -115,3 +115,4 @@ function isActorRaging(actor) {
   if (RE_DEBUG) console.log("Raging Effects | Rage NOT detected");
   return false;
 }
+// END: RAGING EFFECTS MACRO

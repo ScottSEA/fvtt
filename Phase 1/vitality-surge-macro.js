@@ -150,3 +150,4 @@ async function applyVitalitySurge(actor) {
       `</div>`,
   });
 }
+// END: VITALITY SURGE MACRO

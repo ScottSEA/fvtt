@@ -420,3 +420,4 @@ function injectChargerButton(el, buttonHtml) {
 
   target.insertAdjacentHTML(position, buttonHtml);
 }
+// END: CHARGER CHARGE ATTACK MACRO

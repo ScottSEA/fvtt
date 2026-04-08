@@ -191,3 +191,4 @@ function postRageWarning(actor) {
 
   ui.notifications.warn(`⚠️ ${actor.name}'s Rage is about to end — no attack or damage this turn!`);
 }
+// END: RAGE MAINTENANCE WARNING MACRO

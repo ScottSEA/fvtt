@@ -109,25 +109,12 @@ async function loadFromGitHub() {
   await selfUpdate(GH_TOKEN);
 }
 
-// ─── Font Awesome to Data URI ────────────────────────────────────────────────
-
-function faToDataUri(iconClass, color = "#fff", size = 64) {
-  const i = document.createElement("i");
-  i.className = iconClass;
-  i.style.cssText = `font-size:${size}px;position:absolute;visibility:hidden`;
-  document.body.appendChild(i);
-  const s = getComputedStyle(i, ":before");
-  const char = s.content.replace(/"/g, "");
-  const family = s.fontFamily.split(",")[0].replace(/"/g, "").trim();
-  const weight = s.fontWeight || "900";
-  i.remove();
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-family="${family}" font-weight="${weight}" font-size="${size * 0.75}px" fill="${color}">&#x${char.codePointAt(0).toString(16)};</text></svg>`;
-  return `data:image/svg+xml;base64,${btoa(svg)}`;
-}
+// ─── Macro Icon Extraction ───────────────────────────────────────────────────
 
 function extractMacroIcon(code) {
-  const match = code.match(/const\s+MACRO_ICON_FA\s*=\s*"([^"]+)"/);
-  return match ? match[1] : null;
+  const pathMatch = code.match(/const\s+MACRO_ICON\s*=\s*"([^"]+)"/);
+  if (pathMatch) return pathMatch[1];
+  return null;
 }
 
 // ─── Manual Macro Sync ───────────────────────────────────────────────────────
@@ -157,17 +144,16 @@ async function syncManualMacros(token) {
         .replace(/\b\w/g, c => c.toUpperCase());
 
       const existing = game.macros.find(m => m.name === macroName && m.author?.id === game.user.id);
-      const faIcon = extractMacroIcon(code);
-      const img = faIcon ? faToDataUri(faIcon) : undefined;
+      const icon = extractMacroIcon(code);
 
       if (existing) {
         const updates = { command: code };
-        if (img) updates.img = img;
+        if (icon) updates.img = icon;
         await existing.update(updates);
         console.log(`📋 ${macroName} updated.`);
       } else {
         const data = { name: macroName, type: "script", scope: "global", command: code };
-        if (img) data.img = img;
+        if (icon) data.img = icon;
         await Macro.create(data);
         console.log(`📋 ${macroName} created.`);
       }

@@ -18,6 +18,7 @@ const FILE_PATTERN = /-macro\.js$/;
 const LOADER_FLAG = "_githubLoaderResults";
 const TOKEN_KEY = "_ghLoaderToken";
 const SHA_CACHE_KEY = "_ghLoaderShaCache";
+const FA_SVG_BASE = "https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid";
 
 // ─── Token Prompt ────────────────────────────────────────────────────────────
 
@@ -109,8 +110,6 @@ async function loadFromGitHub() {
   // ── Self-update the loader macro from GitHub ───────────────────────────────
   await selfUpdate(GH_TOKEN);
 }
-
-const FA_SVG_BASE = "https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid";
 
 // ─── Macro Icon Resolution ───────────────────────────────────────────────────
 

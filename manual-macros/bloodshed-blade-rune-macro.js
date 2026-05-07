@@ -11,6 +11,17 @@ const BLOODSHED_BLADE_ITEM_NAME = "Bloodshed Blade";
 const BLOODSHED_HOOK_FLAG = "bloodshedBladeHookRegistered";
 const BLOODSHED_RUNE_USED_KEY = "_bloodshedRuneUsedThisRest";
 
+// ─── Test Flags ──────────────────────────────────────────────────────────────
+// Set in browser console:  game._bloodshedTest.forceCrit = true
+// All flags default to false. Set game._bloodshedTest = {} to reset all.
+const BLOODSHED_TEST_KEY = "_bloodshedTest";
+if (!game[BLOODSHED_TEST_KEY]) game[BLOODSHED_TEST_KEY] = {
+  forceCrit: false,       // detectCritical() always returns true
+  skipRuneCheck: false,   // isRuneExpended() always returns false
+  skipHdCheck: false,     // getAvailableHitDice() fakes 10 available d12s
+  allFlags: false,        // shortcut: enables all of the above
+};
+
 // --- Entry point: tear down previous registration, then re-register ---
 teardown();
 register();
@@ -419,6 +430,11 @@ function extractAttackRollData(message) {
 }
 
 function detectCritical(message, el) {
+  const t = game[BLOODSHED_TEST_KEY];
+  if (t?.forceCrit || t?.allFlags) {
+    console.log("Bloodshed Blade | TEST: Forcing critical hit.");
+    return true;
+  }
   // CSS class on the dice total (dnd5e v3 and earlier)
   if (el.querySelector(".dice-total.critical")) return true;
 
@@ -619,6 +635,11 @@ async function buildDamageRoll(actor, blade, isCritical = false) {
 // ─── Actor / Item Queries ────────────────────────────────────────────────────
 
 function getAvailableHitDice(actor) {
+  const t = game[BLOODSHED_TEST_KEY];
+  if (t?.skipHdCheck || t?.allFlags) {
+    console.log("Bloodshed Blade | TEST: Faking 10 available d12 hit dice.");
+    return { available: 10, largestType: "d12" };
+  }
   const classes = actor.classes || {};
   let totalAvailable = 0;
   let largestType = null;
@@ -659,6 +680,11 @@ function getInvokedRuneActivity(actor) {
 }
 
 function isRuneExpended(actor) {
+  const t = game[BLOODSHED_TEST_KEY];
+  if (t?.skipRuneCheck || t?.allFlags) {
+    console.log("Bloodshed Blade | TEST: Skipping rune expended check.");
+    return false;
+  }
   // Primary: synchronous client-side flag (immediate, no race condition)
   if (game[BLOODSHED_RUNE_USED_KEY]?.[actor.id]) return true;
   // Secondary: activity uses on the item (persists across reloads)

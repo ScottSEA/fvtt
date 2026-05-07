@@ -8,6 +8,7 @@
 
 const BLOODSHED_BLADE_ITEM_NAME = "Bloodshed Blade";
 const BLOODSHED_HOOK_FLAG = "bloodshedBladeHookRegistered";
+const BLOODSHED_RUNE_USED_KEY = "_bloodshedRuneUsedThisRest";
 
 // --- Entry point: tear down previous registration, then re-register ---
 teardown();
@@ -19,6 +20,7 @@ function teardown() {
   if (!game[BLOODSHED_HOOK_FLAG]) return;
   const prev = game[BLOODSHED_HOOK_FLAG];
   if (prev.renderHookId != null) Hooks.off("renderChatMessage", prev.renderHookId);
+  if (prev.restHookId != null) Hooks.off("dnd5e.restCompleted", prev.restHookId);
   if (prev.clickHandler) document.removeEventListener("click", prev.clickHandler);
   const oldStyle = document.getElementById("bloodshed-blade-macro-style");
   if (oldStyle) oldStyle.remove();
@@ -28,9 +30,10 @@ function teardown() {
 function register() {
   ensureBloodshedBladeStyles();
   const renderHookId = Hooks.on("renderChatMessage", onRenderChatMessage);
+  const restHookId = Hooks.on("dnd5e.restCompleted", onRestCompleted);
   const clickHandler = onDocumentClick;
   document.addEventListener("click", clickHandler);
-  game[BLOODSHED_HOOK_FLAG] = { renderHookId, clickHandler };
+  game[BLOODSHED_HOOK_FLAG] = { renderHookId, restHookId, clickHandler };
   console.log("Bloodshed Blade macro loaded.");
 }
 
@@ -108,6 +111,7 @@ async function handleUndoRune(event, btn) {
   const intent = resolveUndoIntent(btn);
   if (!intent) return;
 
+  clearRuneUsed(intent.actor.id);
   await updateRuneState(intent.actor, "restore");
   updateUndoUI(btn);
   ui.notifications.info("Rune invocation and hit die expenditure have been undone.");
@@ -654,10 +658,32 @@ function getInvokedRuneActivity(actor) {
 }
 
 function isRuneExpended(actor) {
+  // Primary: synchronous client-side flag (immediate, no race condition)
+  if (game[BLOODSHED_RUNE_USED_KEY]?.[actor.id]) return true;
+  // Secondary: activity uses on the item (persists across reloads)
   const result = getInvokedRuneActivity(actor);
   if (!result) return false;
   const spent = parseInt(result.activity?.uses?.spent || 0, 10);
-  return spent > 0;
+  if (spent > 0) {
+    // Sync the client-side flag to match
+    markRuneUsed(actor.id);
+    return true;
+  }
+  return false;
+}
+
+function markRuneUsed(actorId) {
+  if (!game[BLOODSHED_RUNE_USED_KEY]) game[BLOODSHED_RUNE_USED_KEY] = {};
+  game[BLOODSHED_RUNE_USED_KEY][actorId] = true;
+}
+
+function clearRuneUsed(actorId) {
+  if (game[BLOODSHED_RUNE_USED_KEY]) delete game[BLOODSHED_RUNE_USED_KEY][actorId];
+}
+
+function onRestCompleted(actor, result) {
+  if (!result?.longRest) return;
+  clearRuneUsed(actor.id);
 }
 
 // ─── State Mutations ─────────────────────────────────────────────────────────
@@ -679,6 +705,7 @@ async function rollHitDie(actor, message, hdType, originalAttackTotal, isCritica
     return;
   }
 
+  markRuneUsed(actor.id);
   await updateRuneState(actor, "expend", hdType);
 }
 

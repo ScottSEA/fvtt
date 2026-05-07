@@ -22,9 +22,13 @@ let ADAM_DEBUG = false;
 
 const ADAM_HOOK_FLAG = "adamantineArmorHookRegistered";
 
+const ADAM_ICON_SVG = `<svg fill="#FFF" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" stroke="#FFF"><g stroke-width="0"></g><g stroke-linecap="round" stroke-linejoin="round"></g><g><path d="M26.905 9.991l1.082 0.249c0.655-2.851 0.948-5.73 0.875-8.6l-7.143 0v1.064h-2.989v-1.562h-5.225v1.562h-2.973v-1.064l-7.361-0c-0.074 2.869 0.224 5.751 0.875 8.6l1.082-0.246c0.261 1.227 0.597 2.449 1.006 3.663l-2.548 0.384 3.937 8.298 1.872-1.679c0.628 1.045 1.315 2.079 2.062 3.097l2.21-1.636-3.097 2.296c1.571 2.207 3.394 4.349 5.466 6.414 2.066-2.066 3.859-4.201 5.43-6.414l-0.894-0.66c0.75-1.024 1.44-2.065 2.071-3.117l1.895 1.699 3.937-8.298-2.578-0.389c0.411-1.213 0.748-2.434 1.010-3.661zM10.815 8.232h10.431c0.105 4.394-1.654 8.271-5.215 12.060-3.583-3.797-5.322-7.669-5.215-12.060zM18.403 22.156l0 0c-0.731 0.899-1.509 1.764-2.369 2.624 0 0-0-0-0-0 0.859-0.86 1.637-1.724 2.369-2.624z"></path></g></svg>`;
+const ADAM_ICON_URI = `data:image/svg+xml;base64,${btoa(ADAM_ICON_SVG)}`;
+
 // --- Entry point: tear down previous registration, then re-register ---
 teardown();
 register();
+setMacroIcon();
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
@@ -188,5 +192,15 @@ function postReminder(actor, armorName) {
     whisper: [game.user.id],
     type: CONST.CHAT_MESSAGE_STYLES.OTHER,
   });
+}
+
+// ─── Self-Setting Icon ───────────────────────────────────────────────────────
+
+function setMacroIcon() {
+  const self = game.macros.find(m => m.name.startsWith("scottb") && m.name.toLowerCase().includes("adamantine"));
+  if (self && self.img !== ADAM_ICON_URI) {
+    self.update({ img: ADAM_ICON_URI });
+    if (ADAM_DEBUG) console.log("Adamantine Armor | Macro icon updated.");
+  }
 }
 // END: ADAMANTINE ARMOR REMINDER MACRO

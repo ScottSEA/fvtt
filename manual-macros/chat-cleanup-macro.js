@@ -8,7 +8,7 @@
  * Run again to keep deleting further back.
  */
 
-const MACRO_ICON = "fa-broom";
+const MACRO_ICON = "fa-comments";
 
 const myId = game.user.id;
 const messages = game.messages.contents;

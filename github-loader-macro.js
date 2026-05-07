@@ -47,6 +47,9 @@ async function loadFromGitHub() {
 
   const startTime = Date.now();
 
+  // ── Sync manual macros first (create/update Foundry macro documents) ─────
+  await syncManualMacros(GH_TOKEN);
+
   ui.notifications.info("🔄 Fetching macros from GitHub...");
 
   let files;
@@ -101,9 +104,6 @@ async function loadFromGitHub() {
   }
 
   game[LOADER_FLAG] = results;
-
-  // ── Sync manual macros (create/update Foundry macro documents) ───────────
-  await syncManualMacros(GH_TOKEN);
 
   // ── Self-update the loader macro from GitHub ───────────────────────────────
   await selfUpdate(GH_TOKEN);

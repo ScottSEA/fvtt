@@ -121,7 +121,7 @@ function ensureStyles() {
   s.innerHTML = `
     #token-dashboard {
       position: fixed; top: 60px; left: calc(100vw - 540px); z-index: 9999;
-      background: rgba(0,0,0,0.2); backdrop-filter: blur(8px);
+      background: rgba(0,0,0,0.01); backdrop-filter: blur(8px);
       border: 1px solid rgba(255,255,255,0.15); border-radius: 8px;
       color: #eee; font-size: 12px; min-width: 500px; max-height: 80vh;
       display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0,0,0,0.5);

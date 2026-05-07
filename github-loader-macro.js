@@ -147,7 +147,12 @@ async function selfUpdate(token) {
       return;
     }
     await self.update({ command: latest });
-    ui.notifications.info("🔄 Loader macro updated — changes take effect next run.");
+    ui.notifications.warn("🔄 Loader updated! Click it again to run the new version.");
+    Dialog.prompt({
+      title: "🔄 Loader Updated",
+      content: "<p>The loader macro was updated from GitHub.<br><strong>Run it again</strong> to use the new version.</p>",
+      callback: () => {},
+    });
   } catch (err) {
     console.warn("GitHub Loader | Self-update failed:", err.message);
   }

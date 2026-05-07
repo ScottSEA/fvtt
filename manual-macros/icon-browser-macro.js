@@ -47,10 +47,11 @@ getDirs().then(dirs => {
     .ib-loaded .ib-spinner { display: none; }
     .ib-search-wrap { position: relative; margin-bottom: 6px; }
     .ib-search { width: 100%; padding: 4px 28px 4px 8px; font-size: 12px; box-sizing: border-box; }
-    .ib-clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
-      background: none; border: none; color: #888; cursor: pointer; font-size: 14px;
-      padding: 0 4px; line-height: 1; width: auto; height: auto; display: none; }
-    .ib-clear:hover { color: #fff; }
+    .ib-clear { position: absolute !important; right: 6px !important; top: 50% !important; transform: translateY(-50%) !important;
+      background: none !important; border: none !important; color: #888 !important; cursor: pointer !important; font-size: 14px !important;
+      padding: 0 4px !important; line-height: 1 !important; width: auto !important; height: auto !important;
+      min-width: 0 !important; min-height: 0 !important; display: none; margin: 0 !important; }
+    .ib-clear:hover { color: #fff !important; }
   </style>`;
 
   const d = new Dialog({

@@ -121,7 +121,7 @@ function faToDataUri(iconClass, color = "#fff", size = 64) {
   const family = s.fontFamily.split(",")[0].replace(/"/g, "").trim();
   const weight = s.fontWeight || "900";
   i.remove();
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-family="${family}" font-weight="${weight}" font-size="${size * 0.75}px" fill="${color}">${char}</text></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-family="${family}" font-weight="${weight}" font-size="${size * 0.75}px" fill="${color}">&#x${char.codePointAt(0).toString(16)};</text></svg>`;
   return `data:image/svg+xml;base64,${btoa(svg)}`;
 }
 

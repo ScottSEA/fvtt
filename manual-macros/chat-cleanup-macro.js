@@ -8,7 +8,7 @@
  * Run again to keep deleting further back.
  */
 
-const MACRO_ICON = "icons/svg/pawprint.svg";
+const MACRO_ICON = "fa-broom";
 
 const myId = game.user.id;
 const messages = game.messages.contents;

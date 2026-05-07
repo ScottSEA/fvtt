@@ -73,13 +73,14 @@ async function loadFromGitHub() {
 
   for (const file of files) {
     try {
-      if (shaCache[file.name] === file.sha) {
+      const cached = shaCache[file.name];
+      if (cached?.sha === file.sha) {
         results.skipped.push(file.name);
         continue;
       }
       const code = await fetchFileContent(file.url, GH_TOKEN);
       eval.call(globalThis, code);
-      shaCache[file.name] = file.sha;
+      shaCache[file.name] = { sha: file.sha };
       results.loaded.push(file.name);
       console.log(`✅ ${file.name} loaded.`);
     } catch (err) {
@@ -109,12 +110,43 @@ async function loadFromGitHub() {
   await selfUpdate(GH_TOKEN);
 }
 
-// ─── Macro Icon Extraction ───────────────────────────────────────────────────
+const FA_SVG_BASE = "https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid";
+
+// ─── Macro Icon Resolution ───────────────────────────────────────────────────
 
 function extractMacroIcon(code) {
-  const pathMatch = code.match(/const\s+MACRO_ICON\s*=\s*"([^"]+)"/);
-  if (pathMatch) return pathMatch[1];
-  return null;
+  const match = code.match(/const\s+MACRO_ICON\s*=\s*"([^"]+)"/);
+  return match ? match[1] : null;
+}
+
+function isFaIcon(icon) {
+  return icon && icon.startsWith("fa-");
+}
+
+async function resolveIcon(iconValue) {
+  if (!iconValue) return null;
+  if (!isFaIcon(iconValue)) return iconValue;
+
+  // Fetch SVG from Font Awesome GitHub (public, no auth needed)
+  const name = iconValue.replace(/^fa-/, "");
+  try {
+    const url = `${FA_SVG_BASE}/${name}.svg`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    let svg = await res.text();
+    // Strip comments, set fill to white
+    svg = svg.replace(/<!--[\s\S]*?-->/g, "");
+    svg = svg.replace(/<path /g, '<path fill="#fff" ');
+    return `data:image/svg+xml;base64,${btoa(svg)}`;
+  } catch (err) {
+    console.warn(`GitHub Loader | Failed to fetch FA icon "${name}":`, err.message);
+    return null;
+  }
+}
+
+function macroNameFromFile(filename) {
+  return filename.replace(/-macro\.js$/, "").replace(/-/g, " ")
+    .replace(/\b\w/g, c => c.toUpperCase());
 }
 
 // ─── Manual Macro Sync ───────────────────────────────────────────────────────
@@ -135,29 +167,48 @@ async function syncManualMacros(token) {
 
   for (const file of files) {
     try {
-      if (shaCache[file.name] === file.sha) {
-        console.log(`📋 ${file.name} unchanged, skipping.`);
+      const cached = shaCache[file.name];
+      const code = cached?.sha === file.sha ? null : await fetchFileContent(file.url, token);
+
+      // If SHA unchanged, check if icon needs updating
+      if (!code) {
+        const existing = game.macros.find(m => m.name === macroNameFromFile(file.name) && m.author?.id === game.user.id);
+        if (!existing) continue;
+        // Re-extract icon from existing command to check for changes
+        const currentIcon = extractMacroIcon(existing.command);
+        if (currentIcon === cached?.icon) {
+          console.log(`📋 ${file.name} unchanged, skipping.`);
+          continue;
+        }
+        // Icon value changed in cache vs macro — re-resolve
+        const img = await resolveIcon(currentIcon);
+        if (img && existing.img !== img) {
+          await existing.update({ img });
+          shaCache[file.name] = { sha: cached.sha, icon: currentIcon };
+          console.log(`📋 ${macroNameFromFile(file.name)} icon updated.`);
+          synced++;
+        }
         continue;
       }
-      const code = await fetchFileContent(file.url, token);
-      const macroName = file.name.replace(/-macro\.js$/, "").replace(/-/g, " ")
-        .replace(/\b\w/g, c => c.toUpperCase());
+
+      const macroName = macroNameFromFile(file.name);
+      const iconValue = extractMacroIcon(code);
+      const img = await resolveIcon(iconValue);
 
       const existing = game.macros.find(m => m.name === macroName && m.author?.id === game.user.id);
-      const icon = extractMacroIcon(code);
 
       if (existing) {
         const updates = { command: code };
-        if (icon) updates.img = icon;
+        if (img) updates.img = img;
         await existing.update(updates);
         console.log(`📋 ${macroName} updated.`);
       } else {
         const data = { name: macroName, type: "script", scope: "global", command: code };
-        if (icon) data.img = icon;
+        if (img) data.img = img;
         await Macro.create(data);
         console.log(`📋 ${macroName} created.`);
       }
-      shaCache[file.name] = file.sha;
+      shaCache[file.name] = { sha: file.sha, icon: iconValue };
       synced++;
     } catch (err) {
       console.error(`❌ Manual macro ${file.name} failed:`, err);

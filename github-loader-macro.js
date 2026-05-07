@@ -133,9 +133,15 @@ async function resolveIcon(iconValue) {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     let svg = await res.text();
-    // Strip comments, set fill to white
+    // Strip comments, set fill to white, add padding via viewBox expansion
     svg = svg.replace(/<!--[\s\S]*?-->/g, "");
     svg = svg.replace(/<path /g, '<path fill="#fff" ');
+    // Expand viewBox by 30% on each side for padding
+    svg = svg.replace(/viewBox="([^"]+)"/, (_, vb) => {
+      const [x, y, w, h] = vb.split(" ").map(Number);
+      const pad = Math.max(w, h) * 0.3;
+      return `viewBox="${x - pad} ${y - pad} ${w + pad * 2} ${h + pad * 2}"`;
+    });
     return `data:image/svg+xml;base64,${btoa(svg)}`;
   } catch (err) {
     console.warn(`GitHub Loader | Failed to fetch FA icon "${name}":`, err.message);

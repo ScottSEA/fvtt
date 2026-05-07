@@ -135,7 +135,7 @@ function ensureStyles() {
     }
     .td-close {
       background: none; border: none; color: #aaa; cursor: pointer;
-      font-size: 16px; padding: 0 4px;
+      font-size: 14px; padding: 0 4px; line-height: 1; width: auto; height: auto;
     }
     .td-close:hover { color: #fff; }
     .td-body { overflow-y: auto; padding: 4px 8px 8px; }

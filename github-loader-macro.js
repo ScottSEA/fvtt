@@ -109,6 +109,31 @@ async function loadFromGitHub() {
   await selfUpdate(GH_TOKEN);
 }
 
+// ─── Font Awesome to Data URI ────────────────────────────────────────────────
+
+function faToDataUri(iconClass, color = "#fff", size = 64) {
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const x = c.getContext("2d");
+  const i = document.createElement("i");
+  i.className = iconClass;
+  i.style.cssText = `font-size:${size}px;position:absolute;visibility:hidden`;
+  document.body.appendChild(i);
+  const s = getComputedStyle(i, ":before");
+  x.font = `${size}px "${s.fontFamily.split(",")[0].replace(/"/g, "")}"`;
+  x.fillStyle = color;
+  x.textAlign = "center";
+  x.textBaseline = "middle";
+  x.fillText(s.content.replace(/"/g, ""), size / 2, size / 2);
+  i.remove();
+  return c.toDataURL();
+}
+
+function extractMacroIcon(code) {
+  const match = code.match(/const\s+MACRO_ICON_FA\s*=\s*"([^"]+)"/);
+  return match ? match[1] : null;
+}
+
 // ─── Manual Macro Sync ───────────────────────────────────────────────────────
 
 async function syncManualMacros(token) {
@@ -136,11 +161,18 @@ async function syncManualMacros(token) {
         .replace(/\b\w/g, c => c.toUpperCase());
 
       const existing = game.macros.find(m => m.name === macroName && m.author?.id === game.user.id);
+      const faIcon = extractMacroIcon(code);
+      const img = faIcon ? faToDataUri(faIcon) : undefined;
+
       if (existing) {
-        await existing.update({ command: code });
+        const updates = { command: code };
+        if (img) updates.img = img;
+        await existing.update(updates);
         console.log(`📋 ${macroName} updated.`);
       } else {
-        await Macro.create({ name: macroName, type: "script", scope: "global", command: code });
+        const data = { name: macroName, type: "script", scope: "global", command: code };
+        if (img) data.img = img;
+        await Macro.create(data);
         console.log(`📋 ${macroName} created.`);
       }
       shaCache[file.name] = file.sha;

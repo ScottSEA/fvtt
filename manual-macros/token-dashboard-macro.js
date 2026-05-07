@@ -36,6 +36,17 @@ container.innerHTML = `
   </table></div>`;
 
 ensureStyles();
+
+// Restore saved position
+const saved = localStorage.getItem("tokenDashboardPos");
+if (saved) {
+  try {
+    const { left, top } = JSON.parse(saved);
+    container.style.left = left + "px";
+    container.style.top = top + "px";
+  } catch (_) {}
+}
+
 document.body.appendChild(container);
 
 // Drag support
@@ -51,7 +62,14 @@ document.addEventListener("mousemove", e => {
   container.style.left = (e.clientX - dx) + "px";
   container.style.top = (e.clientY - dy) + "px";
 });
-document.addEventListener("mouseup", () => dragging = false);
+document.addEventListener("mouseup", () => {
+  if (dragging) {
+    localStorage.setItem("tokenDashboardPos", JSON.stringify({
+      left: container.offsetLeft, top: container.offsetTop
+    }));
+  }
+  dragging = false;
+});
 
 // Close button
 container.querySelector(".td-close").addEventListener("click", () => {

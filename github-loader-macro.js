@@ -17,6 +17,7 @@ const FILE_PATTERN = /-macro\.js$/;
 
 const LOADER_FLAG = "_githubLoaderResults";
 const TOKEN_KEY = "_ghLoaderToken";
+const SHA_CACHE_KEY = "_ghLoaderShaCache";
 
 // ─── Token Prompt ────────────────────────────────────────────────────────────
 
@@ -62,14 +63,20 @@ async function loadFromGitHub() {
     return;
   }
 
-  console.log(`GitHub Loader | Found ${files.length} macro files. Loading...`);
+  console.log(`GitHub Loader | Found ${files.length} macro files. Checking for changes...`);
 
-  const results = { loaded: [], failed: [] };
+  const results = { loaded: [], skipped: [], failed: [] };
+  const shaCache = game[SHA_CACHE_KEY] ?? {};
 
   for (const file of files) {
     try {
+      if (shaCache[file.name] === file.sha) {
+        results.skipped.push(file.name);
+        continue;
+      }
       const code = await fetchFileContent(file.url, GH_TOKEN);
       eval.call(globalThis, code);
+      shaCache[file.name] = file.sha;
       results.loaded.push(file.name);
       console.log(`✅ ${file.name} loaded.`);
     } catch (err) {
@@ -78,8 +85,13 @@ async function loadFromGitHub() {
     }
   }
 
+  game[SHA_CACHE_KEY] = shaCache;
+
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  const summary = `🎲 GitHub Loader: ${results.loaded.length}/${files.length} macros loaded (${elapsed}s)`;
+  const parts = [`${results.loaded.length} loaded`];
+  if (results.skipped.length > 0) parts.push(`${results.skipped.length} cached`);
+  if (results.failed.length > 0) parts.push(`${results.failed.length} failed`);
+  const summary = `🎲 GitHub Loader: ${parts.join(", ")} (${elapsed}s)`;
 
   if (results.failed.length > 0) {
     const failNames = results.failed.map(f => f.name).join(", ");
@@ -111,8 +123,14 @@ async function syncManualMacros(token) {
   if (files.length === 0) return;
 
   let synced = 0;
+  const shaCache = game[SHA_CACHE_KEY] ?? {};
+
   for (const file of files) {
     try {
+      if (shaCache[file.name] === file.sha) {
+        console.log(`📋 ${file.name} unchanged, skipping.`);
+        continue;
+      }
       const code = await fetchFileContent(file.url, token);
       const macroName = file.name.replace(/-macro\.js$/, "").replace(/-/g, " ")
         .replace(/\b\w/g, c => c.toUpperCase());
@@ -125,11 +143,14 @@ async function syncManualMacros(token) {
         await Macro.create({ name: macroName, type: "script", scope: "global", command: code });
         console.log(`📋 ${macroName} created.`);
       }
+      shaCache[file.name] = file.sha;
       synced++;
     } catch (err) {
       console.error(`❌ Manual macro ${file.name} failed:`, err);
     }
   }
+
+  game[SHA_CACHE_KEY] = shaCache;
 
   if (synced > 0) ui.notifications.info(`📋 ${synced} manual macro${synced !== 1 ? "s" : ""} synced.`);
 }

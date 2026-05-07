@@ -12,22 +12,45 @@ const REPO_OWNER = "ScottSEA";
 const REPO_NAME = "fvtt";
 const BRANCH = "main";
 const HOOK_DIR = "hook-macros";
+const MANUAL_DIR = "manual-macros";
 const FILE_PATTERN = /-macro\.js$/;
 
 const LOADER_FLAG = "_githubLoaderResults";
+const TOKEN_KEY = "_ghLoaderToken";
+
+// ─── Token Prompt ────────────────────────────────────────────────────────────
+
+async function getToken() {
+  if (game[TOKEN_KEY]) return game[TOKEN_KEY];
+  const token = await Dialog.prompt({
+    title: "🔑",
+    content: `<input type="password" name="token" style="width:100%">`,
+    callback: html => html.find("[name=token]").val()?.trim(),
+    rejectClose: false,
+  });
+  if (!token) return null;
+  game[TOKEN_KEY] = token;
+  return token;
+}
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 await loadFromGitHub();
 
 async function loadFromGitHub() {
+  const GH_TOKEN = await getToken();
+  if (!GH_TOKEN) {
+    ui.notifications.warn("GitHub Loader: No token provided — cancelled.");
+    return;
+  }
+
   const startTime = Date.now();
 
   ui.notifications.info("🔄 Fetching macros from GitHub...");
 
   let files;
   try {
-    files = await listMacroFiles();
+    files = await listMacroFiles(GH_TOKEN);
   } catch (err) {
     ui.notifications.error(`GitHub Loader: Failed to list files — ${err.message}`);
     console.error("GitHub Loader | Directory listing failed:", err);
@@ -45,7 +68,7 @@ async function loadFromGitHub() {
 
   for (const file of files) {
     try {
-      const code = await fetchFileContent(file.download_url);
+      const code = await fetchFileContent(file.url, GH_TOKEN);
       eval.call(globalThis, code);
       results.loaded.push(file.name);
       console.log(`✅ ${file.name} loaded.`);
@@ -66,15 +89,83 @@ async function loadFromGitHub() {
   }
 
   game[LOADER_FLAG] = results;
+
+  // ── Sync manual macros (create/update Foundry macro documents) ───────────
+  await syncManualMacros(GH_TOKEN);
+
+  // ── Self-update the loader macro from GitHub ───────────────────────────────
+  await selfUpdate(GH_TOKEN);
+}
+
+// ─── Manual Macro Sync ───────────────────────────────────────────────────────
+
+async function syncManualMacros(token) {
+  let files;
+  try {
+    files = await listDirectory(MANUAL_DIR, token);
+  } catch (err) {
+    console.log("GitHub Loader | No manual-macros/ directory found, skipping.");
+    return;
+  }
+
+  if (files.length === 0) return;
+
+  let synced = 0;
+  for (const file of files) {
+    try {
+      const code = await fetchFileContent(file.url, token);
+      const macroName = file.name.replace(/-macro\.js$/, "").replace(/-/g, " ")
+        .replace(/\b\w/g, c => c.toUpperCase());
+
+      const existing = game.macros.find(m => m.name === macroName && m.author?.id === game.user.id);
+      if (existing) {
+        await existing.update({ command: code });
+        console.log(`📋 ${macroName} updated.`);
+      } else {
+        await Macro.create({ name: macroName, type: "script", scope: "global", command: code });
+        console.log(`📋 ${macroName} created.`);
+      }
+      synced++;
+    } catch (err) {
+      console.error(`❌ Manual macro ${file.name} failed:`, err);
+    }
+  }
+
+  if (synced > 0) ui.notifications.info(`📋 ${synced} manual macro${synced !== 1 ? "s" : ""} synced.`);
+}
+
+// ─── Self-Update ─────────────────────────────────────────────────────────────
+
+async function selfUpdate(token) {
+  try {
+    const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/github-loader-macro.js?ref=${BRANCH}`;
+    const latest = await fetchFileContent(apiUrl, token);
+    const self = game.macros.find(m => m.command?.includes(LOADER_FLAG) && m.author?.id === game.user.id);
+    if (!self) return;
+    if (self.command.trim() === latest.trim()) {
+      console.log("GitHub Loader | Self-update: already up to date.");
+      return;
+    }
+    await self.update({ command: latest });
+    ui.notifications.info("🔄 Loader macro updated — changes take effect next run.");
+  } catch (err) {
+    console.warn("GitHub Loader | Self-update failed:", err.message);
+  }
 }
 
 // ─── GitHub API ──────────────────────────────────────────────────────────────
 
-async function listMacroFiles() {
-  const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${HOOK_DIR}?ref=${BRANCH}`;
+async function listMacroFiles(token) {
+  return listDirectory(HOOK_DIR, token);
+}
+
+async function listDirectory(dir, token) {
+  const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${dir}?ref=${BRANCH}`;
   const cacheBust = `&_=${Date.now()}`;
 
-  const response = await fetch(apiUrl + cacheBust);
+  const response = await fetch(apiUrl + cacheBust, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   if (!response.ok) {
     throw new Error(`GitHub API returned ${response.status}: ${response.statusText}`);
   }
@@ -86,9 +177,14 @@ async function listMacroFiles() {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-async function fetchFileContent(downloadUrl) {
-  const cacheBust = downloadUrl.includes("?") ? `&_=${Date.now()}` : `?_=${Date.now()}`;
-  const response = await fetch(downloadUrl + cacheBust);
+async function fetchFileContent(apiUrl, token) {
+  const cacheBust = apiUrl.includes("?") ? `&_=${Date.now()}` : `?_=${Date.now()}`;
+  const response = await fetch(apiUrl + cacheBust, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github.v3.raw",
+    },
+  });
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
   }

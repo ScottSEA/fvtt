@@ -332,6 +332,7 @@ function isMeleeWeaponItem(item, config) {
 function analyzeForCharger(message, el) {
   const actor = resolveActorFromMessage(message);
   if (!actor) return null;
+  if (!actor.isOwner) return null;
 
   // Actor must have the Charger feat
   if (!actorHasChargerFeat(actor)) return null;

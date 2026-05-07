@@ -139,6 +139,7 @@ function ensureButchersBibStyles() {
 function analyzeForReroll(message, el) {
   const actor = resolveActorFromMessage(message);
   if (!actor) return null;
+  if (!actor.isOwner) return null;
   if (!isMeleeDamageMessage(message, actor)) return null;
   if (!actorHasEquippedBib(actor)) return null;
 

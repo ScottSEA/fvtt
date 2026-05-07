@@ -29,7 +29,7 @@ container.innerHTML = `
   <div class="td-body"><table>
     <thead><tr>
       <th>Name</th><th>HP</th><th>AC</th><th>Disp</th>
-      <th>X</th><th>Y</th><th>Vis</th><th>Conditions</th>
+      <th>Vis</th><th>Conditions</th>
     </tr></thead>
     <tbody id="td-rows"></tbody>
   </table></div>`;
@@ -65,7 +65,7 @@ function refresh() {
   if (!tbody) return;
 
   const tokens = canvas.tokens?.placeables ?? [];
-  const dispMap = { [-1]: "👹", [0]: "😐", [1]: "🟢" };
+  const dispMap = { [-1]: {icon:"👹",tip:"Hostile"}, [0]: {icon:"😐",tip:"Neutral"}, [1]: {icon:"🟢",tip:"Friendly"} };
 
   tbody.innerHTML = tokens
     .sort((a, b) => (b.document?.disposition ?? 0) - (a.document?.disposition ?? 0) || a.name.localeCompare(b.name))
@@ -76,17 +76,16 @@ function refresh() {
       const hpStr = hp ? `${hp.value}/${hp.max}` : "?";
       const hpPct = hp?.max ? hp.value / hp.max : 1;
       const hpColor = hpPct > 0.5 ? "#4a4" : hpPct > 0.25 ? "#da3" : "#d44";
-      const disp = dispMap[t.document?.disposition] ?? "?";
+      const disp = dispMap[t.document?.disposition] ?? {icon:"?",tip:"Unknown"};
       const vis = t.document?.hidden ? "👁️‍🗨️" : "👁️";
+      const visTip = t.document?.hidden ? "Hidden" : "Visible";
       const conds = [...(a?.statuses ?? [])].join(", ") || "—";
       return `<tr>
         <td class="td-name">${t.name}</td>
         <td style="color:${hpColor}">${hpStr}</td>
         <td>${ac ?? "?"}</td>
-        <td>${disp}</td>
-        <td>${Math.round(t.document?.x ?? 0)}</td>
-        <td>${Math.round(t.document?.y ?? 0)}</td>
-        <td>${vis}</td>
+        <td title="${disp.tip}">${disp.icon}</td>
+        <td title="${visTip}">${vis}</td>
         <td class="td-conds">${conds}</td>
       </tr>`;
     }).join("");

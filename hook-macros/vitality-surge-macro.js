@@ -16,6 +16,7 @@
  * Or use CONFIG.debug.hooks = true to see ALL Foundry hooks firing.
  */
 
+const MACRO_ICON = "fa-shield-heart";
 let VS_DEBUG = false;
 const VS_HOOK_FLAG = "vitalitySurgeHookRegistered";
 

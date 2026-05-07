@@ -16,6 +16,7 @@
  * Set RE_DEBUG = true in the console to log hook traffic.
  */
 
+const MACRO_ICON = "fa-fire-flame-curved";
 let RE_DEBUG = false;
 
 const RE_HOOK_FLAG = "ragingEffectsHookRegistered";

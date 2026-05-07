@@ -18,6 +18,7 @@
  * Hooks: dnd5e.renderChatMessage, click delegation
  */
 
+const MACRO_ICON = "fa-slash";
 let GRAZE_DEBUG = false;
 
 const GRAZE_HOOK_FLAG = "grazeMasteryHookRegistered";

@@ -17,6 +17,7 @@
  * Set RELENTLESS_DEBUG = true in the console to log hook traffic.
  */
 
+const MACRO_ICON = "fa-skull";
 let RELENTLESS_DEBUG = false;
 const RELENTLESS_HOOK_FLAG = "relentlessRageHookRegistered";
 const RELENTLESS_STATE_KEY = "_relentlessRageState";

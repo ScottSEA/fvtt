@@ -10,6 +10,7 @@
 const LGF_HOOK_FLAG = "lifeGivingForceHookRegistered";
 const LIFE_GIVING_FORCE_NAME = "Vitality of the Tree";
 const LIFE_GIVING_FORCE_ACTIVITY = "Life-Giving Force";
+const MACRO_ICON = "fa-heart-pulse";
 let LGF_DEBUG = false;
 
 // --- Entry point: tear down previous registration, then re-register ---

@@ -4,6 +4,7 @@
  * Rolls a fake critical hit attack message against the current target
  * (or self if no target) for testing adamantine armor and other crit-reaction macros.
  */
+const MACRO_ICON = "fa-burst";
 (async () => {
   const actor = canvas.tokens.controlled[0]?.actor ?? game.user.character;
   if (!actor) {

@@ -11,6 +11,7 @@
  * Once per turn.
  */
 
+const MACRO_ICON = "fa-hand-fist";
 let BRUTAL_DEBUG = false;
 
 const BRUTAL_HOOK_FLAG = "brutalStrikeHookRegistered";

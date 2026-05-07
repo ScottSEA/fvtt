@@ -22,6 +22,7 @@
  * Hooks: renderChatMessage, click delegation
  */
 
+const MACRO_ICON = "fa-bolt";
 let CHARGER_DEBUG = false;
 
 const CHARGER_FEAT_NAME = "Charger";

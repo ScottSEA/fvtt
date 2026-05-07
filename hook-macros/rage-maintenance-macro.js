@@ -18,6 +18,7 @@
  * Hooks: updateCombat, dnd5e.renderChatMessage, dnd5e.damageActor
  */
 
+const MACRO_ICON = "fa-fire";
 let RM_DEBUG = false;
 
 const RM_HOOK_FLAG = "rageMaintenanceHookRegistered";

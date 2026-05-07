@@ -6,6 +6,7 @@
  * damage dice can be rerolled — the second result must be kept.
  */
 
+const MACRO_ICON = "fa-dice";
 const BUTCHERS_BIB_ITEM_NAME = "Butcher's Bib";
 const BUTCHERS_BIB_HOOK_FLAG = "butchersBibHookRegistered";
 

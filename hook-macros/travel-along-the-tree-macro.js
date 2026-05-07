@@ -17,6 +17,7 @@ const TATT_FEATURE_NAME = "Travel Along the Tree";
 const TATT_GATHER_RANGE_FT = 10;
 const TATT_TELEPORT_RANGE_FT = 60;
 const TATT_MAX_COMPANIONS = 6;
+const MACRO_ICON = "fa-portal-enter";
 let TATT_DEBUG = false;
 
 // --- Entry point ---

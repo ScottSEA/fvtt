@@ -8,6 +8,7 @@
  * Run again to close the dashboard.
  */
 
+const MACRO_ICON = "fa-table-cells";
 const DASH_FLAG = "_tokenDashboard";
 
 // Toggle off if already open

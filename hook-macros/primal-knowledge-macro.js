@@ -12,6 +12,7 @@
  * Perception, Stealth, or Survival."
  */
 
+const MACRO_ICON = "fa-brain";
 let PK_DEBUG = false;
 const PK_HOOK_FLAG = "primalKnowledgeHookRegistered";
 const PK_PENDING_KEY = "_primalKnowledgePending";

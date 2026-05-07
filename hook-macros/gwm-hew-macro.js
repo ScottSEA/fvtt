@@ -14,6 +14,7 @@
  * combat turn. Outside of combat, no restriction is applied.
  */
 
+const MACRO_ICON = "fa-axe-battle";
 let HEW_DEBUG = false;
 
 const GWM_FEAT_NAME = "Great Weapon Master";

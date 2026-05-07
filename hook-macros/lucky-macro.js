@@ -22,6 +22,7 @@
  * bonus, recovery on Long Rest).
  */
 
+const MACRO_ICON = "fa-clover";
 let LUCKY_DEBUG = false;
 
 const LUCKY_FEAT_NAME = "Lucky";

@@ -16,6 +16,7 @@
  * Set IP_DEBUG = true in the console to log all hook traffic for debugging.
  */
 
+const MACRO_ICON = "fa-person-running";
 let IP_DEBUG = false;
 const IP_HOOK_FLAG = "instinctivePounceHookRegistered";
 

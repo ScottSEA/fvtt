@@ -18,6 +18,7 @@
  * Hooks: dnd5e.renderChatMessage
  */
 
+const MACRO_ICON = "fa-shield-halved";
 let ADAM_DEBUG = false;
 
 const ADAM_HOOK_FLAG = "adamantineArmorHookRegistered";

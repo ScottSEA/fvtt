@@ -12,6 +12,7 @@
  * Uses are tracked via the item's system.uses (max: 1, recovery: Long Rest).
  */
 
+const MACRO_ICON = "fa-paw";
 const MASCOT_ITEM_NAME = "Cuddly Strixhaven Mascot";
 const MASCOT_HOOK_FLAG = "strixhavenMascotHookRegistered";
 const MASCOT_PENDING_KEY = "_strixhavenMascotPending";

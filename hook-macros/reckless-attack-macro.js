@@ -22,6 +22,7 @@
  * Hooks: renderRollConfigurationDialog
  */
 
+const MACRO_ICON = "fa-exclamation-triangle";
 let RECKLESS_DEBUG = false;
 
 const RA_HOOK_FLAG = "recklessAttackHookRegistered";

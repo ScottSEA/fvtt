@@ -16,6 +16,7 @@
 
 // ─── Creature Table (Tan Bag — SRD Monsters) ─────────────────────────────────
 
+const MACRO_ICON = "fa-hat-wizard";
 const TAN_BAG_CREATURES = [
   {
     roll: 1,

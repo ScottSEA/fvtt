@@ -7,6 +7,7 @@
  * Run again to browse again.
  */
 
+const MACRO_ICON = "fa-icons";
 const ICON_BROWSER_FLAG = "_iconBrowserOpen";
 
 if (game[ICON_BROWSER_FLAG]) {

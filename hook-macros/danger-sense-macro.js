@@ -9,6 +9,7 @@
  * you can't be blinded, deafened, or incapacitated."
  */
 
+const MACRO_ICON = "fa-triangle-exclamation";
 const DANGER_SENSE_HOOK_FLAG = "dangerSenseHookRegistered";
 const DANGER_SENSE_PENDING_KEY = "_dangerSensePending";
 

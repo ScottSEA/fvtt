@@ -6,6 +6,7 @@
  * damage button to the rune result message.
  */
 
+const MACRO_ICON = "fa-droplet";
 const BLOODSHED_BLADE_ITEM_NAME = "Bloodshed Blade";
 const BLOODSHED_HOOK_FLAG = "bloodshedBladeHookRegistered";
 const BLOODSHED_RUNE_USED_KEY = "_bloodshedRuneUsedThisRest";

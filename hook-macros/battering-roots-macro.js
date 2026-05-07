@@ -16,6 +16,7 @@
  * Hooks: dnd5e.renderChatMessage, click delegation
  */
 
+const MACRO_ICON = "fa-tree";
 let BR_DEBUG = false;
 
 const BR_HOOK_FLAG = "batteringRootsHookRegistered";

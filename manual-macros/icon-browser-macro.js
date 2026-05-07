@@ -45,15 +45,24 @@ getDirs().then(dirs => {
     .ib-grid img:hover { outline: 2px solid #ff0; }
     .ib-spinner { font-size: 10px; }
     .ib-loaded .ib-spinner { display: none; }
+    .ib-search-wrap { position: relative; margin-bottom: 6px; }
+    .ib-search { width: 100%; padding: 4px 28px 4px 8px; font-size: 12px; box-sizing: border-box; }
+    .ib-clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; color: #888; cursor: pointer; font-size: 14px;
+      padding: 0 4px; line-height: 1; width: auto; height: auto; display: none; }
+    .ib-clear:hover { color: #fff; }
   </style>`;
 
   const d = new Dialog({
     title: `🎨 Icon Browser (${dirs.length} folders)`,
     content: `${style}
-      <input type="text" class="ib-search" placeholder="Search folders & filenames..." style="width:100%;margin-bottom:6px;padding:4px 8px;font-size:12px;">
+      <div class="ib-search-wrap">
+        <input type="text" class="ib-search" placeholder="Filter icons...">
+        <button class="ib-clear" title="Clear">✕</button>
+      </div>
       <div class="ib-results" style="display:none;max-height:60vh;overflow:auto"></div>
       <div class="ib-browse" style="max-height:70vh;overflow:auto">${sections}</div>`,
-    buttons: { ok: { label: "Close" } },
+    buttons: {},
     default: "ok",
     close: () => { delete game[ICON_BROWSER_FLAG]; },
   }, { width: 800 });
@@ -75,13 +84,29 @@ getDirs().then(dirs => {
     // Search handler
     let searchTimer;
     const searchInput = el.querySelector(".ib-search");
+    const clearBtn = el.querySelector(".ib-clear");
     const browseDiv = el.querySelector(".ib-browse");
     const resultsDiv = el.querySelector(".ib-results");
 
+    function clearSearch() {
+      searchInput.value = "";
+      clearBtn.style.display = "none";
+      browseDiv.style.display = "";
+      resultsDiv.style.display = "none";
+      searchInput.focus();
+    }
+
     searchInput.addEventListener("input", () => {
       clearTimeout(searchTimer);
+      clearBtn.style.display = searchInput.value ? "" : "none";
       searchTimer = setTimeout(() => runSearch(searchInput.value.trim().toLowerCase(), el, browseDiv, resultsDiv), 300);
     });
+
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); clearSearch(); }
+    });
+
+    clearBtn.addEventListener("click", clearSearch);
   });
 
   async function loadFolder(det) {

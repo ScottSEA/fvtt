@@ -29,7 +29,7 @@ async function getDirs(path = "icons", dirs = []) {
 
 getDirs().then(dirs => {
   const sections = dirs.map(d =>
-    `<details class="ib-section">
+    `<details class="ib-section" open>
       <summary class="ib-folder">${d} <span class="ib-spinner">⏳</span></summary>
       <div class="ib-grid" data-folder="${d}"></div>
     </details>`

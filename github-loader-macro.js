@@ -112,21 +112,17 @@ async function loadFromGitHub() {
 // ─── Font Awesome to Data URI ────────────────────────────────────────────────
 
 function faToDataUri(iconClass, color = "#fff", size = 64) {
-  const c = document.createElement("canvas");
-  c.width = c.height = size;
-  const x = c.getContext("2d");
   const i = document.createElement("i");
   i.className = iconClass;
   i.style.cssText = `font-size:${size}px;position:absolute;visibility:hidden`;
   document.body.appendChild(i);
   const s = getComputedStyle(i, ":before");
-  x.font = `${size}px "${s.fontFamily.split(",")[0].replace(/"/g, "")}"`;
-  x.fillStyle = color;
-  x.textAlign = "center";
-  x.textBaseline = "middle";
-  x.fillText(s.content.replace(/"/g, ""), size / 2, size / 2);
+  const char = s.content.replace(/"/g, "");
+  const family = s.fontFamily.split(",")[0].replace(/"/g, "").trim();
+  const weight = s.fontWeight || "900";
   i.remove();
-  return c.toDataURL();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-family="${family}" font-weight="${weight}" font-size="${size * 0.75}px" fill="${color}">${char}</text></svg>`;
+  return `data:image/svg+xml;base64,${btoa(svg)}`;
 }
 
 function extractMacroIcon(code) {

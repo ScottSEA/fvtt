@@ -115,18 +115,28 @@ getDirs().then(dirs => {
       if (!grid.dataset.loaded) await loadFolder(det);
     }
 
-    // Search all loaded images
-    const matches = [];
+    // Search all loaded images, group by folder
+    const grouped = {};
     el.querySelectorAll(".ib-grid img").forEach(img => {
       const path = img.dataset.path || img.title || "";
-      if (path.toLowerCase().includes(query)) matches.push(path);
+      if (!path.toLowerCase().includes(query)) return;
+      const folder = path.substring(0, path.lastIndexOf("/"));
+      if (!grouped[folder]) grouped[folder] = [];
+      grouped[folder].push(path);
     });
 
-    resultsDiv.innerHTML = matches.length > 0
-      ? `<p style="color:#888;font-size:11px;margin:0 0 4px">${matches.length} results for "${query}"</p>` +
-        `<div class="ib-grid">${matches.map(f =>
-          `<img src="${f}" title="${f}" loading="lazy" style="width:36px;height:36px;margin:1px;cursor:pointer" onclick="navigator.clipboard.writeText('${f}');ui.notifications.info('Copied: ${f.replace(/'/g, "")}')">`
-        ).join("")}</div>`
+    const totalMatches = Object.values(grouped).reduce((n, arr) => n + arr.length, 0);
+
+    resultsDiv.innerHTML = totalMatches > 0
+      ? `<p style="color:#888;font-size:11px;margin:0 0 4px">${totalMatches} results for "${query}"</p>` +
+        Object.entries(grouped).map(([folder, files]) =>
+          `<details class="ib-section" open>
+            <summary class="ib-folder ib-loaded">${folder} (${files.length})</summary>
+            <div class="ib-grid">${files.map(f =>
+              `<img src="${f}" title="${f}" loading="lazy" style="width:36px;height:36px;margin:1px;cursor:pointer" onclick="navigator.clipboard.writeText('${f}');ui.notifications.info('Copied: ${f.replace(/'/g, "")}')">`
+            ).join("")}</div>
+          </details>`
+        ).join("")
       : `<em style="color:#666">No matches for "${query}"</em>`;
   }
 });

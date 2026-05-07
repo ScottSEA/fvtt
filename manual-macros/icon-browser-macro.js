@@ -49,7 +49,10 @@ getDirs().then(dirs => {
 
   const d = new Dialog({
     title: `🎨 Icon Browser (${dirs.length} folders)`,
-    content: `${style}<div style="max-height:70vh;overflow:auto">${sections}</div>`,
+    content: `${style}
+      <input type="text" class="ib-search" placeholder="Search folders & filenames..." style="width:100%;margin-bottom:6px;padding:4px 8px;font-size:12px;">
+      <div class="ib-results" style="display:none;max-height:60vh;overflow:auto"></div>
+      <div class="ib-browse" style="max-height:70vh;overflow:auto">${sections}</div>`,
     buttons: { ok: { label: "Close" } },
     default: "ok",
     close: () => { delete game[ICON_BROWSER_FLAG]; },
@@ -60,20 +63,71 @@ getDirs().then(dirs => {
   Hooks.once("renderDialog", (app, html) => {
     if (app !== d) return;
     const el = html instanceof HTMLElement ? html : html[0] ?? html;
+
+    // Toggle handler for lazy loading
     el.querySelectorAll("details.ib-section").forEach(det => {
       det.addEventListener("toggle", async () => {
         if (!det.open) return;
-        const grid = det.querySelector(".ib-grid");
-        if (grid.children.length > 0) return;
-        const folder = grid.dataset.folder;
-        const r = await FilePicker.browse("public", folder);
-        const files = r.files.filter(f => /\.(svg|png|webp|jpg)$/i.test(f));
-        grid.innerHTML = files.map(f =>
-          `<img src="${f}" title="${f}" loading="lazy" onclick="navigator.clipboard.writeText('${f}');ui.notifications.info('Copied: ${f.replace(/'/g, "")}')">`
-        ).join("") || "<em style='color:#666;padding:4px'>No icons</em>";
-        det.querySelector(".ib-folder").classList.add("ib-loaded");
+        await loadFolder(det);
       });
     });
+
+    // Search handler
+    let searchTimer;
+    const searchInput = el.querySelector(".ib-search");
+    const browseDiv = el.querySelector(".ib-browse");
+    const resultsDiv = el.querySelector(".ib-results");
+
+    searchInput.addEventListener("input", () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => runSearch(searchInput.value.trim().toLowerCase(), el, browseDiv, resultsDiv), 300);
+    });
   });
+
+  async function loadFolder(det) {
+    const grid = det.querySelector(".ib-grid");
+    if (grid.dataset.loaded) return;
+    const folder = grid.dataset.folder;
+    const r = await FilePicker.browse("public", folder);
+    const files = r.files.filter(f => /\.(svg|png|webp|jpg)$/i.test(f));
+    grid.innerHTML = files.map(f =>
+      `<img src="${f}" title="${f}" data-path="${f}" loading="lazy" onclick="navigator.clipboard.writeText('${f}');ui.notifications.info('Copied: ${f.replace(/'/g, "")}')">`
+    ).join("") || "<em style='color:#666;padding:4px'>No icons</em>";
+    grid.dataset.loaded = "true";
+    det.querySelector(".ib-folder").classList.add("ib-loaded");
+  }
+
+  async function runSearch(query, el, browseDiv, resultsDiv) {
+    if (!query) {
+      browseDiv.style.display = "";
+      resultsDiv.style.display = "none";
+      return;
+    }
+
+    browseDiv.style.display = "none";
+    resultsDiv.style.display = "";
+    resultsDiv.innerHTML = "<em style='color:#888'>Searching...</em>";
+
+    // Load all unloaded folders that match the query by folder name
+    const allSections = el.querySelectorAll("details.ib-section");
+    for (const det of allSections) {
+      const grid = det.querySelector(".ib-grid");
+      if (!grid.dataset.loaded) await loadFolder(det);
+    }
+
+    // Search all loaded images
+    const matches = [];
+    el.querySelectorAll(".ib-grid img").forEach(img => {
+      const path = img.dataset.path || img.title || "";
+      if (path.toLowerCase().includes(query)) matches.push(path);
+    });
+
+    resultsDiv.innerHTML = matches.length > 0
+      ? `<p style="color:#888;font-size:11px;margin:0 0 4px">${matches.length} results for "${query}"</p>` +
+        `<div class="ib-grid">${matches.map(f =>
+          `<img src="${f}" title="${f}" loading="lazy" style="width:36px;height:36px;margin:1px;cursor:pointer" onclick="navigator.clipboard.writeText('${f}');ui.notifications.info('Copied: ${f.replace(/'/g, "")}')">`
+        ).join("")}</div>`
+      : `<em style="color:#666">No matches for "${query}"</em>`;
+  }
 });
 // END: ICON BROWSER MACRO

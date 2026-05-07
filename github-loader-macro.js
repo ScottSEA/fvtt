@@ -15,6 +15,8 @@ const HOOK_DIR = "hook-macros";
 const MANUAL_DIR = "manual-macros";
 const FILE_PATTERN = /-macro\.js$/;
 
+const LOADER_ICON = "fa-download";
+
 const LOADER_FLAG = "_githubLoaderResults";
 const TOKEN_KEY = "_ghLoaderToken";
 const SHA_CACHE_KEY = "_ghLoaderShaCache";
@@ -229,10 +231,17 @@ async function syncManualMacros(token) {
 
 async function selfUpdate(token) {
   try {
-    const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/github-loader-macro.js?ref=${BRANCH}`;
-    const latest = await fetchFileContent(apiUrl, token);
     const self = game.macros.find(m => m.command?.includes(LOADER_FLAG) && m.author?.id === game.user.id);
     if (!self) return;
+
+    // Set icon if missing or default
+    const loaderImg = await resolveIcon(LOADER_ICON);
+    if (loaderImg && self.img !== loaderImg) {
+      await self.update({ img: loaderImg });
+    }
+
+    const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/github-loader-macro.js?ref=${BRANCH}`;
+    const latest = await fetchFileContent(apiUrl, token);
     if (self.command.trim() === latest.trim()) {
       console.log("GitHub Loader | Self-update: already up to date.");
       return;

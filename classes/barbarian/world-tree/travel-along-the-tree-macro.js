@@ -5,8 +5,8 @@
  * While raging, use bonus action to teleport yourself and up to 6 willing
  * creatures within 10 ft to an unoccupied space you can see within 60 ft.
  *
- * NOTE: This is a FUTURE feature — Tusk is currently level 13.
- *       Scaffold is ready; activate when level 14 is reached.
+ * NOTE: This is a level 14 feature. The macro only activates if the
+ *       actor has the "Travel Along the Tree" feature.
  *
  * Trigger: dnd5e.postUseActivity (detect "Travel Along the Tree" usage)
  * Conditions: Owner, raging, has feature

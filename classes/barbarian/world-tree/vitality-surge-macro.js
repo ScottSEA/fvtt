@@ -69,6 +69,7 @@ function onCreateActiveEffect(effect, options, userId) {
 
   const actor = effect.parent;
   if (!actor || actor.documentName !== "Actor") return;
+  if (!actor.isOwner) return;
 
   applyVitalitySurge(actor).catch(err => console.error("Vitality Surge error:", err));
 }
@@ -82,6 +83,7 @@ function onUpdateActiveEffect(effect, changes, options, userId) {
 
   const actor = effect.parent;
   if (!actor || actor.documentName !== "Actor") return;
+  if (!actor.isOwner) return;
 
   applyVitalitySurge(actor).catch(err => console.error("Vitality Surge error:", err));
 }

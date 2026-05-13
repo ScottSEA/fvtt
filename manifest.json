@@ -1,0 +1,341 @@
+{
+  "version": 1,
+  "compatibility": {
+    "foundry": ">=13",
+    "system": "dnd5e",
+    "systemVersion": ">=5"
+  },
+  "schema": {
+    "requires": {
+      "class": "Class identifier (e.g. 'barbarian'). Matched against actor.items where type='class', using system.identifier or name.",
+      "subclass": "Subclass name (e.g. 'Path of the World Tree'). Matched against actor.items where type='subclass'.",
+      "feat": "Feature/feat name (e.g. 'Danger Sense'). Matched against actor.items where type='feat'.",
+      "item": "Item name substring (e.g. 'Adamantine'). Partial match against actor items.",
+      "race": "Race/species name (e.g. 'Orc'). Matched against actor.items where type='race'.",
+      "minLevel": "Minimum class level required.",
+      "spell": "Spell name. Matched against actor.items where type='spell'."
+    },
+    "dependsOn": "Array of macro IDs that must be installed before this macro. Loader installs dependencies first.",
+    "autoExecute": "If true, the loader evals the macro after creating/updating its Macro document to register hooks. All autoExecute macros MUST follow teardown/register lifecycle for idempotency.",
+    "notes": "All conditions in 'requires' are AND'd. Empty requires = always installed (utilities). The manifest is a coarse install filter; macros perform their own fine-grained runtime checks."
+  },
+  "macros": [
+    {
+      "id": "rage-maintenance",
+      "name": "Rage Maintenance",
+      "path": "classes/barbarian/rage-maintenance-macro.js",
+      "description": "Warns when Rage may end due to no attack or damage on your turn",
+      "category": "class",
+      "autoExecute": true,
+      "requires": {
+        "class": "barbarian"
+      }
+    },
+    {
+      "id": "reckless-attack",
+      "name": "Reckless Attack",
+      "path": "classes/barbarian/reckless-attack-macro.js",
+      "description": "Banner reminder for Reckless Attack on STR melee attacks",
+      "category": "class",
+      "autoExecute": true,
+      "requires": {
+        "class": "barbarian",
+        "feat": "Reckless Attack"
+      }
+    },
+    {
+      "id": "brutal-strike",
+      "name": "Brutal Strike",
+      "path": "classes/barbarian/brutal-strike-macro.js",
+      "description": "Brutal Strike option buttons on attacks (Forceful, Hamstring, Staggering, Sundering)",
+      "category": "class",
+      "autoExecute": true,
+      "requires": {
+        "class": "barbarian",
+        "feat": "Brutal Strike"
+      }
+    },
+    {
+      "id": "danger-sense",
+      "name": "Danger Sense",
+      "path": "classes/barbarian/danger-sense-macro.js",
+      "description": "DEX save advantage banner reminder for Danger Sense",
+      "category": "class",
+      "autoExecute": true,
+      "requires": {
+        "class": "barbarian",
+        "feat": "Danger Sense"
+      }
+    },
+    {
+      "id": "primal-knowledge",
+      "name": "Primal Knowledge",
+      "path": "classes/barbarian/primal-knowledge-macro.js",
+      "description": "Swap eligible skill checks to STR while raging",
+      "category": "class",
+      "autoExecute": true,
+      "requires": {
+        "class": "barbarian",
+        "feat": "Primal Knowledge"
+      }
+    },
+    {
+      "id": "relentless-rage",
+      "name": "Relentless Rage",
+      "path": "classes/barbarian/relentless-rage-macro.js",
+      "description": "CON save to avoid dropping to 0 HP while raging; includes Relentless Endurance (Orc) if available",
+      "category": "class",
+      "autoExecute": true,
+      "requires": {
+        "class": "barbarian",
+        "feat": "Relentless Rage"
+      }
+    },
+    {
+      "id": "raging-effects",
+      "name": "Raging Effects",
+      "path": "classes/barbarian/raging-effects-macro.js",
+      "description": "STR save/check advantage banner reminder while raging",
+      "category": "class",
+      "autoExecute": true,
+      "requires": {
+        "class": "barbarian"
+      }
+    },
+    {
+      "id": "instinctive-pounce",
+      "name": "Instinctive Pounce",
+      "path": "classes/barbarian/instinctive-pounce-macro.js",
+      "description": "Reminder to move half speed on Rage activation",
+      "category": "class",
+      "autoExecute": true,
+      "requires": {
+        "class": "barbarian",
+        "feat": "Instinctive Pounce"
+      }
+    },
+    {
+      "id": "battering-roots",
+      "name": "Battering Roots",
+      "path": "classes/barbarian/world-tree/battering-roots-macro.js",
+      "description": "Push/Topple buttons on Heavy/Versatile melee hits while raging",
+      "category": "subclass",
+      "autoExecute": true,
+      "requires": {
+        "class": "barbarian",
+        "feat": "Battering Roots"
+      }
+    },
+    {
+      "id": "branches-of-tree",
+      "name": "Branches of the Tree",
+      "path": "classes/barbarian/world-tree/branches-of-tree-macro.js",
+      "description": "Chat reminder when hostile starts turn within 30 ft while raging",
+      "category": "subclass",
+      "autoExecute": true,
+      "requires": {
+        "class": "barbarian",
+        "feat": "Branches of the Tree"
+      }
+    },
+    {
+      "id": "life-giving-force",
+      "name": "Life-Giving Force",
+      "path": "classes/barbarian/world-tree/life-giving-force-macro.js",
+      "description": "On combat turn while raging, offer temp HP to an ally",
+      "category": "subclass",
+      "autoExecute": true,
+      "requires": {
+        "class": "barbarian",
+        "feat": "Vitality of the Tree"
+      }
+    },
+    {
+      "id": "vitality-surge",
+      "name": "Vitality Surge",
+      "path": "classes/barbarian/world-tree/vitality-surge-macro.js",
+      "description": "Auto-grant temp HP equal to Barbarian level on Rage activation",
+      "category": "subclass",
+      "autoExecute": true,
+      "requires": {
+        "class": "barbarian",
+        "feat": "Vitality of the Tree"
+      }
+    },
+    {
+      "id": "travel-along-the-tree",
+      "name": "Travel Along the Tree",
+      "path": "classes/barbarian/world-tree/travel-along-the-tree-macro.js",
+      "description": "Teleport self + companions on Rage bonus action (Barbarian 14)",
+      "category": "subclass",
+      "autoExecute": true,
+      "requires": {
+        "class": "barbarian",
+        "feat": "Travel Along the Tree"
+      }
+    },
+    {
+      "id": "lucky",
+      "name": "Lucky",
+      "path": "feats/lucky-macro.js",
+      "description": "Lucky feat reminder on d20 rolls and incoming attacks; tracks Luck Points",
+      "category": "feat",
+      "autoExecute": true,
+      "requires": {
+        "feat": "Lucky"
+      }
+    },
+    {
+      "id": "charger",
+      "name": "Charger",
+      "path": "feats/charger-macro.js",
+      "description": "Invoke Charger button on melee attacks; +1d8 damage or push 10 ft",
+      "category": "feat",
+      "autoExecute": true,
+      "requires": {
+        "feat": "Charger"
+      }
+    },
+    {
+      "id": "gwm-hew",
+      "name": "Great Weapon Master — Hew",
+      "path": "feats/gwm-hew-macro.js",
+      "description": "Bonus Action attack reminder on crits or kills with melee weapons",
+      "category": "feat",
+      "autoExecute": true,
+      "requires": {
+        "feat": "Great Weapon Master"
+      }
+    },
+    {
+      "id": "graze-mastery",
+      "name": "Graze Mastery",
+      "path": "feats/graze-mastery-macro.js",
+      "description": "Graze button on missed melee attacks with Graze mastery weapons",
+      "category": "feat",
+      "autoExecute": true,
+      "requires": {
+        "feat": "Weapon Mastery"
+      }
+    },
+    {
+      "id": "adamantine-armor",
+      "name": "Adamantine Armor",
+      "path": "items/adamantine-armor-macro.js",
+      "description": "Whispered reminder when incoming crit is negated by Adamantine armor",
+      "category": "item",
+      "autoExecute": true,
+      "requires": {
+        "item": "Adamantine"
+      }
+    },
+    {
+      "id": "bloodshed-blade-rune",
+      "name": "Bloodshed Blade Rune",
+      "path": "items/bloodshed-blade-rune-macro.js",
+      "description": "Invoke Rune buttons on Bloodshed Blade attacks; spend Hit Dice for bonus damage",
+      "category": "item",
+      "autoExecute": true,
+      "requires": {
+        "item": "Bloodshed Blade"
+      }
+    },
+    {
+      "id": "butchers-bib-reroll",
+      "name": "Butcher's Bib Reroll",
+      "path": "items/butchers-bib-reroll-macro.js",
+      "description": "Reroll Damage button on melee damage when Butcher's Bib equipped; 1/turn",
+      "category": "item",
+      "autoExecute": true,
+      "requires": {
+        "item": "Butcher's Bib"
+      }
+    },
+    {
+      "id": "strixhaven-mascot",
+      "name": "Strixhaven Mascot",
+      "path": "items/strixhaven-mascot-macro.js",
+      "description": "WIS save advantage button using Strixhaven Mascot charge",
+      "category": "item",
+      "autoExecute": true,
+      "requires": {
+        "item": "Strixhaven Mascot"
+      }
+    },
+    {
+      "id": "bag-of-tricks",
+      "name": "Bag of Tricks",
+      "path": "items/bag-of-tricks-macro.js",
+      "description": "Roll creatures from Tan Bag of Tricks and post stat cards",
+      "category": "item",
+      "autoExecute": false,
+      "requires": {
+        "item": "Bag of Tricks"
+      }
+    },
+    {
+      "id": "token-dashboard",
+      "name": "Token Dashboard",
+      "path": "utilities/token-dashboard-macro.js",
+      "description": "Floating translucent HUD showing all tokens with HP, AC, conditions",
+      "category": "utility",
+      "autoExecute": false,
+      "requires": {}
+    },
+    {
+      "id": "chat-cleanup",
+      "name": "Chat Cleanup",
+      "path": "utilities/chat-cleanup-macro.js",
+      "description": "Delete your recent chat messages",
+      "category": "utility",
+      "autoExecute": false,
+      "requires": {}
+    },
+    {
+      "id": "icon-browser",
+      "name": "Icon Browser",
+      "path": "utilities/icon-browser-macro.js",
+      "description": "Visual grid browser for all Foundry icon directories",
+      "category": "utility",
+      "autoExecute": false,
+      "requires": {}
+    },
+    {
+      "id": "macro-cleanup",
+      "name": "Macro Cleanup",
+      "path": "utilities/macro-cleanup-macro.js",
+      "description": "Delete all your macro documents except the loader",
+      "category": "utility",
+      "autoExecute": false,
+      "requires": {}
+    },
+    {
+      "id": "test-crit-attack",
+      "name": "Test Crit Attack",
+      "path": "utilities/test-crit-attack-macro.js",
+      "description": "Post a fake critical attack message for testing macros",
+      "category": "utility",
+      "autoExecute": false,
+      "requires": {}
+    },
+    {
+      "id": "dashboard-dblclick",
+      "name": "Dashboard Double-Click",
+      "path": "utilities/dashboard-dblclick-macro.js",
+      "description": "Double-click empty canvas to toggle Token Dashboard",
+      "category": "utility",
+      "autoExecute": true,
+      "dependsOn": ["token-dashboard"],
+      "requires": {}
+    },
+    {
+      "id": "macro-quick-exec",
+      "name": "Macro Quick-Execute",
+      "path": "utilities/macro-quick-exec-macro.js",
+      "description": "Shift+click macros in directory to execute immediately",
+      "category": "utility",
+      "autoExecute": true,
+      "requires": {}
+    }
+  ]
+}

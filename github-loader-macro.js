@@ -5,9 +5,9 @@
  * Fetches manifest.json from GitHub, inspects the user's actor,
  * and installs only macros whose prerequisites match the character.
  *
- * All macros are installed as visible Foundry Macro documents.
- * Hook-based macros (autoExecute: true) are executed immediately
- * to register their hooks.
+ * Manual macros (autoExecute: false) are installed as visible Foundry
+ * Macro documents. Hook macros (autoExecute: true) are eval'd directly
+ * without creating documents — invisible in the macro list.
  *
  * Run once at session start to install and activate all applicable macros.
  */
@@ -132,10 +132,14 @@ async function runLoader() {
 
   for (const entry of sorted) {
     try {
-      const result = await installMacro(entry, GH_TOKEN, shaCache, fileTree);
-      results[result.status].push(entry.name);
-
-      if (entry.autoExecute && result.code) {
+      if (entry.autoExecute) {
+        // Hook macros: eval directly, no Macro document (invisible)
+        const result = await loadHookMacro(entry, GH_TOKEN, shaCache, fileTree);
+        if (result.fetched) {
+          results.installed.push(entry.name);
+        } else {
+          results.cached.push(entry.name);
+        }
         try {
           eval.call(globalThis, result.code);
           results.executed.push(entry.name);
@@ -143,6 +147,10 @@ async function runLoader() {
           console.error(`Macro Loader | ❌ Execute failed for ${entry.name}:`, execErr);
           results.failed.push(`${entry.name} (exec)`);
         }
+      } else {
+        // Manual macros: create/update Macro document (visible in macro list)
+        const result = await installMacroDocument(entry, GH_TOKEN, shaCache, fileTree);
+        results[result.status].push(entry.name);
       }
     } catch (err) {
       results.failed.push(entry.name);
@@ -357,26 +365,45 @@ function topologicalSort(macros) {
 
 // ─── Macro Installation ──────────────────────────────────────────────────────
 
-async function installMacro(entry, token, shaCache, fileTree) {
+// Hook macros: eval'd directly, no Macro document created (invisible in macro list)
+async function loadHookMacro(entry, token, shaCache, fileTree) {
   const cached = shaCache[entry.id];
   const currentSha = fileTree[entry.path];
   const repoToken = entry._pluginToken ?? token;
 
-  // Check SHA cache — if file unchanged and Macro document exists, skip fetch
+  // SHA cache hit — reuse previously fetched code from cache
+  if (cached?.sha && currentSha && cached.sha === currentSha && cached.code) {
+    return { code: cached.code, fetched: false };
+  }
+
+  // Fetch the macro source from GitHub
+  const apiUrl = entry._pluginApiBase
+    ? `${entry._pluginApiBase}/contents/${entry.path}?ref=${entry._pluginBranch ?? "main"}`
+    : buildApiUrl(entry.path);
+  const code = await fetchFileContent(apiUrl, repoToken);
+
+  shaCache[entry.id] = { sha: currentSha ?? Date.now().toString(), code };
+  console.log(`⚡ ${entry.name} fetched.`);
+  return { code, fetched: true };
+}
+
+// Manual macros: created/updated as Foundry Macro documents (visible in macro list)
+async function installMacroDocument(entry, token, shaCache, fileTree) {
+  const cached = shaCache[entry.id];
+  const currentSha = fileTree[entry.path];
+  const repoToken = entry._pluginToken ?? token;
+
+  // SHA cache hit — check if Macro document already exists
   if (cached?.sha && currentSha && cached.sha === currentSha) {
     const existing = game.macros.find(m =>
       m.name === entry.name && m.author?.id === game.user.id
     );
     if (existing) {
-      // Re-execute autoExecute macros even if cached (hooks need re-registration)
-      if (entry.autoExecute) {
-        return { status: "cached", code: existing.command };
-      }
-      return { status: "cached", code: null };
+      return { status: "cached" };
     }
   }
 
-  // Fetch the macro source from GitHub (use plugin repo URL if available)
+  // Fetch the macro source from GitHub
   const apiUrl = entry._pluginApiBase
     ? `${entry._pluginApiBase}/contents/${entry.path}?ref=${entry._pluginBranch ?? "main"}`
     : buildApiUrl(entry.path);
@@ -397,7 +424,7 @@ async function installMacro(entry, token, shaCache, fileTree) {
     await existing.update(updates);
     console.log(`📋 ${entry.name} updated.`);
     shaCache[entry.id] = { sha: currentSha ?? Date.now().toString() };
-    return { status: "updated", code };
+    return { status: "updated" };
   }
 
   // Create new Macro document
@@ -411,7 +438,7 @@ async function installMacro(entry, token, shaCache, fileTree) {
   await Macro.create(data);
   console.log(`📋 ${entry.name} created.`);
   shaCache[entry.id] = { sha: currentSha ?? Date.now().toString() };
-  return { status: "installed", code };
+  return { status: "installed" };
 }
 
 // ─── Macro Icon Resolution ───────────────────────────────────────────────────

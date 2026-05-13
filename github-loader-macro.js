@@ -2,12 +2,16 @@
  * GITHUB MACRO LOADER
  *
  * Manifest-driven selective installer for Foundry VTT macros.
- * Fetches manifest.json from GitHub, inspects the user's actor,
- * and installs only macros whose prerequisites match the character.
+ * Fetches manifest.json from a public GitHub repo, inspects the user's
+ * actor, and installs only macros whose prerequisites match the character.
  *
  * Manual macros (autoExecute: false) are installed as visible Foundry
  * Macro documents. Hook macros (autoExecute: true) are eval'd directly
  * without creating documents — invisible in the macro list.
+ *
+ * Normal run: no authentication required (public repo).
+ * Ctrl+Shift run: dev mode — prompts for a PAT to load additional
+ * macros from a private repo.
  *
  * Run once at session start to install and activate all applicable macros.
  */
@@ -20,47 +24,32 @@ const MANIFEST_PATH = "manifest.json";
 const LOADER_ICON = "fa-download";
 
 const LOADER_FLAG = "_githubLoaderResults";
-const TOKEN_KEY = "_ghLoaderToken";
 const SHA_CACHE_KEY = "_ghLoaderShaCache";
 const ACTOR_KEY = "_ghLoaderActorId";
 const PLUGIN_KEY = "_ghLoaderPlugins";
 const FA_SVG_BASE = "https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid";
 
-// ─── Token Prompt ────────────────────────────────────────────────────────────
-
-async function getToken() {
-  if (game[TOKEN_KEY]) return game[TOKEN_KEY];
-  const token = await Dialog.prompt({
-    title: "🔑 GitHub Token",
-    content: `<p style="margin-bottom:8px;">Enter a GitHub Personal Access Token with read access to <code>${REPO_OWNER}/${REPO_NAME}</code>:</p>
-      <input type="password" name="token" style="width:100%" placeholder="ghp_...">`,
-    callback: html => html.find("[name=token]").val()?.trim(),
-    rejectClose: false,
-  });
-  if (!token) return null;
-  game[TOKEN_KEY] = token;
-  return token;
-}
-
 // ─── Main ────────────────────────────────────────────────────────────────────
+
+// Detect Ctrl+Shift at launch time for dev mode
+const DEV_MODE = game.keyboard?.isModifierActive(KeyboardManager.MODIFIER_KEYS.CONTROL)
+              && game.keyboard?.isModifierActive(KeyboardManager.MODIFIER_KEYS.SHIFT);
+
+if (DEV_MODE) console.log("Macro Loader | 🔧 Dev mode activated (Ctrl+Shift held).");
 
 await runLoader();
 
 async function runLoader() {
-  const GH_TOKEN = await getToken();
-  if (!GH_TOKEN) {
-    ui.notifications.warn("Macro Loader: No token provided — cancelled.");
-    return;
-  }
-
   const startTime = Date.now();
-  ui.notifications.info("🔄 Fetching macro manifest from GitHub...");
+  ui.notifications.info(DEV_MODE
+    ? "🔧 Fetching macros (dev mode)..."
+    : "🔄 Fetching macro manifest from GitHub...");
 
   // ── Step 1: Fetch the manifest ─────────────────────────────────────────────
   let manifest;
   try {
     const manifestUrl = buildApiUrl(MANIFEST_PATH);
-    const raw = await fetchFileContent(manifestUrl, GH_TOKEN);
+    const raw = await fetchFileContent(manifestUrl);
     manifest = JSON.parse(raw);
   } catch (err) {
     ui.notifications.error(`Macro Loader: Failed to fetch manifest — ${err.message}`);
@@ -70,21 +59,24 @@ async function runLoader() {
 
   console.log(`Macro Loader | Manifest v${manifest.version} loaded with ${manifest.macros.length} macros.`);
 
-  // ── Step 1a: Load plugin manifests (private repos, dev macros, etc.) ────────
-  const plugins = await loadPluginManifests(GH_TOKEN);
-  if (plugins.length > 0) {
-    let pluginMacroCount = 0;
-    for (const plugin of plugins) {
-      pluginMacroCount += plugin.manifest.macros.length;
-      manifest.macros.push(...plugin.manifest.macros);
+  // ── Step 1a: Load plugin manifests (Ctrl+Shift only) ───────────────────────
+  let plugins = [];
+  if (DEV_MODE) {
+    plugins = await loadPluginManifests();
+    if (plugins.length > 0) {
+      let pluginMacroCount = 0;
+      for (const plugin of plugins) {
+        pluginMacroCount += plugin.manifest.macros.length;
+        manifest.macros.push(...plugin.manifest.macros);
+      }
+      console.log(`Macro Loader | ${plugins.length} plugin(s) loaded with ${pluginMacroCount} additional macros.`);
     }
-    console.log(`Macro Loader | ${plugins.length} plugin(s) loaded with ${pluginMacroCount} additional macros.`);
   }
 
   // ── Step 1b: Fetch the repo tree for SHA-based caching ─────────────────────
   let fileTree = {};
   try {
-    fileTree = await fetchFileTree(GH_TOKEN);
+    fileTree = await fetchFileTree();
     console.log(`Macro Loader | File tree loaded (${Object.keys(fileTree).length} files).`);
   } catch (err) {
     console.warn("Macro Loader | Tree fetch failed, all files will be re-fetched:", err.message);
@@ -134,7 +126,7 @@ async function runLoader() {
     try {
       if (entry.autoExecute) {
         // Hook macros: eval directly, no Macro document (invisible)
-        const result = await loadHookMacro(entry, GH_TOKEN, shaCache, fileTree);
+        const result = await loadHookMacro(entry, shaCache, fileTree);
         if (result.fetched) {
           results.installed.push(entry.name);
         } else {
@@ -149,7 +141,7 @@ async function runLoader() {
         }
       } else {
         // Manual macros: create/update Macro document (visible in macro list)
-        const result = await installMacroDocument(entry, GH_TOKEN, shaCache, fileTree);
+        const result = await installMacroDocument(entry, shaCache, fileTree);
         results[result.status].push(entry.name);
       }
     } catch (err) {
@@ -187,7 +179,7 @@ async function runLoader() {
   game[LOADER_FLAG] = { ...results, actorName: actor?.name, timestamp: Date.now() };
 
   // ── Step 8: Self-update ────────────────────────────────────────────────────
-  await selfUpdate(GH_TOKEN);
+  await selfUpdate();
 }
 
 // ─── Actor Detection ─────────────────────────────────────────────────────────
@@ -366,10 +358,10 @@ function topologicalSort(macros) {
 // ─── Macro Installation ──────────────────────────────────────────────────────
 
 // Hook macros: eval'd directly, no Macro document created (invisible in macro list)
-async function loadHookMacro(entry, token, shaCache, fileTree) {
+async function loadHookMacro(entry, shaCache, fileTree) {
   const cached = shaCache[entry.id];
   const currentSha = fileTree[entry.path];
-  const repoToken = entry._pluginToken ?? token;
+  const token = entry._pluginToken ?? null;
 
   // SHA cache hit — reuse previously fetched code from cache
   if (cached?.sha && currentSha && cached.sha === currentSha && cached.code) {
@@ -380,7 +372,7 @@ async function loadHookMacro(entry, token, shaCache, fileTree) {
   const apiUrl = entry._pluginApiBase
     ? `${entry._pluginApiBase}/contents/${entry.path}?ref=${entry._pluginBranch ?? "main"}`
     : buildApiUrl(entry.path);
-  const code = await fetchFileContent(apiUrl, repoToken);
+  const code = await fetchFileContent(apiUrl, token);
 
   shaCache[entry.id] = { sha: currentSha ?? Date.now().toString(), code };
   console.log(`⚡ ${entry.name} fetched.`);
@@ -388,10 +380,10 @@ async function loadHookMacro(entry, token, shaCache, fileTree) {
 }
 
 // Manual macros: created/updated as Foundry Macro documents (visible in macro list)
-async function installMacroDocument(entry, token, shaCache, fileTree) {
+async function installMacroDocument(entry, shaCache, fileTree) {
   const cached = shaCache[entry.id];
   const currentSha = fileTree[entry.path];
-  const repoToken = entry._pluginToken ?? token;
+  const token = entry._pluginToken ?? null;
 
   // SHA cache hit — check if Macro document already exists
   if (cached?.sha && currentSha && cached.sha === currentSha) {
@@ -407,7 +399,7 @@ async function installMacroDocument(entry, token, shaCache, fileTree) {
   const apiUrl = entry._pluginApiBase
     ? `${entry._pluginApiBase}/contents/${entry.path}?ref=${entry._pluginBranch ?? "main"}`
     : buildApiUrl(entry.path);
-  const code = await fetchFileContent(apiUrl, repoToken);
+  const code = await fetchFileContent(apiUrl, token);
 
   // Resolve icon from the macro source
   const iconValue = extractMacroIcon(code);
@@ -478,7 +470,7 @@ async function resolveIcon(iconValue) {
 
 // ─── Self-Update ─────────────────────────────────────────────────────────────
 
-async function selfUpdate(token) {
+async function selfUpdate() {
   try {
     const self = game.macros.find(m =>
       m.command?.includes(LOADER_FLAG) && m.author?.id === game.user.id
@@ -491,7 +483,7 @@ async function selfUpdate(token) {
     }
 
     const apiUrl = buildApiUrl("github-loader-macro.js");
-    const latest = await fetchFileContent(apiUrl, token);
+    const latest = await fetchFileContent(apiUrl);
     if (self.command.trim() === latest.trim()) {
       console.log("Macro Loader | Self-update: already up to date.");
       return;
@@ -510,10 +502,10 @@ async function selfUpdate(token) {
 
 // ─── Plugin Manifests (Private Repos) ─────────────────────────────────────────
 
-async function loadPluginManifests(mainToken) {
+async function loadPluginManifests() {
   const plugins = game[PLUGIN_KEY] ?? [];
 
-  // On first run, offer to add a plugin
+  // On first dev-mode run, prompt to add a plugin
   if (!game[PLUGIN_KEY]) {
     game[PLUGIN_KEY] = [];
     const plugin = await promptPluginSetup();
@@ -528,7 +520,11 @@ async function loadPluginManifests(mainToken) {
   const loaded = [];
   for (const plugin of plugins) {
     try {
-      const token = plugin.token ?? mainToken;
+      const token = plugin.token;
+      if (!token) {
+        console.warn(`Macro Loader | Plugin ${plugin.owner}/${plugin.repo} has no PAT, skipping.`);
+        continue;
+      }
       const apiBase = `https://api.github.com/repos/${plugin.owner}/${plugin.repo}`;
       const branch = plugin.branch ?? "main";
       const manifestPath = plugin.manifestPath ?? "manifest.json";
@@ -577,16 +573,16 @@ async function loadPluginManifests(mainToken) {
 
 async function promptPluginSetup() {
   return Dialog.prompt({
-    title: "🔌 Plugin Macros (Optional)",
+    title: "🔧 Dev Macros — Private Repo",
     content: `
-      <p style="margin-bottom:8px;">Load macros from an additional private repo?
+      <p style="margin-bottom:8px;">Enter the private repo and PAT for dev macros.
       Leave blank to skip.</p>
       <div style="display:grid; gap:6px;">
         <label style="font-size:12px;">Repo owner/name (e.g. <code>MyUser/fvtt-dev</code>)
           <input type="text" name="plugin-repo" style="width:100%" placeholder="owner/repo">
         </label>
-        <label style="font-size:12px;">PAT for this repo (if different from main token)
-          <input type="password" name="plugin-token" style="width:100%" placeholder="ghp_... (leave blank to reuse main token)">
+        <label style="font-size:12px;">PAT with read access to this repo
+          <input type="password" name="plugin-token" style="width:100%" placeholder="ghp_...">
         </label>
         <label style="font-size:12px;">Branch (default: main)
           <input type="text" name="plugin-branch" style="width:100%" placeholder="main">
@@ -596,7 +592,8 @@ async function promptPluginSetup() {
       const repoStr = html.find("[name=plugin-repo]").val()?.trim();
       if (!repoStr || !repoStr.includes("/")) return null;
       const [owner, repo] = repoStr.split("/", 2);
-      const token = html.find("[name=plugin-token]").val()?.trim() || null;
+      const token = html.find("[name=plugin-token]").val()?.trim();
+      if (!token) return null;
       const branch = html.find("[name=plugin-branch]").val()?.trim() || "main";
       return { owner, repo, token, branch };
     },
@@ -612,9 +609,9 @@ function buildApiUrl(path) {
 
 async function fetchFileTree(token) {
   const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/git/trees/${BRANCH}?recursive=1&_=${Date.now()}`;
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const headers = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(url, { headers });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const data = await response.json();
   const tree = {};
@@ -626,12 +623,9 @@ async function fetchFileTree(token) {
 
 async function fetchFileContent(apiUrl, token) {
   const cacheBust = apiUrl.includes("?") ? `&_=${Date.now()}` : `?_=${Date.now()}`;
-  const response = await fetch(apiUrl + cacheBust, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/vnd.github.v3.raw",
-    },
-  });
+  const headers = { Accept: "application/vnd.github.v3.raw" };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(apiUrl + cacheBust, { headers });
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
   }

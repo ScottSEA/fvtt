@@ -37,6 +37,10 @@ const DEV_MODE = game.keyboard?.isModifierActive(KeyboardManager.MODIFIER_KEYS.C
 
 if (DEV_MODE) console.log("Macro Loader | 🔧 Dev mode activated (Ctrl+Shift held).");
 
+// ── Pre-flight: self-update before running ───────────────────────────────────
+const _loaderUpToDate = await checkForUpdate();
+if (!_loaderUpToDate) return; // updated and re-executed — bail out of old version
+
 await runLoader();
 
 async function runLoader() {
@@ -178,8 +182,8 @@ async function runLoader() {
 
   game[LOADER_FLAG] = { ...results, actorName: actor?.name, timestamp: Date.now() };
 
-  // ── Step 8: Self-update ────────────────────────────────────────────────────
-  await selfUpdate();
+  // ── Step 8: Self-update icon (code already updated pre-flight) ──────────────
+  await updateLoaderIcon();
 }
 
 // ─── Actor Detection ─────────────────────────────────────────────────────────
@@ -468,35 +472,50 @@ async function resolveIcon(iconValue) {
   }
 }
 
-// ─── Self-Update ─────────────────────────────────────────────────────────────
+// ─── Pre-Flight Self-Update ──────────────────────────────────────────────────
 
-async function selfUpdate() {
+// Returns true if no update needed (continue running).
+// Returns false if updated and re-executed (caller should bail out).
+async function checkForUpdate() {
+  try {
+    const self = game.macros.find(m =>
+      m.command?.includes(LOADER_FLAG) && m.author?.id === game.user.id
+    );
+    if (!self) return true;
+
+    const apiUrl = buildApiUrl("github-loader-macro.js");
+    const latest = await fetchFileContent(apiUrl);
+    if (self.command.trim() === latest.trim()) {
+      console.log("Macro Loader | Up to date.");
+      return true;
+    }
+
+    // Update the macro document with new code
+    await self.update({ command: latest });
+    console.log("Macro Loader | Updated — re-executing new version.");
+    ui.notifications.info("🔄 Loader updated — running new version...");
+
+    // Execute the updated version automatically
+    self.execute();
+    return false; // signal caller to stop running the old code
+  } catch (err) {
+    console.warn("Macro Loader | Self-update check failed, continuing with current version:", err.message);
+    return true;
+  }
+}
+
+async function updateLoaderIcon() {
   try {
     const self = game.macros.find(m =>
       m.command?.includes(LOADER_FLAG) && m.author?.id === game.user.id
     );
     if (!self) return;
-
     const loaderImg = await resolveIcon(LOADER_ICON);
     if (loaderImg && self.img !== loaderImg) {
       await self.update({ img: loaderImg });
     }
-
-    const apiUrl = buildApiUrl("github-loader-macro.js");
-    const latest = await fetchFileContent(apiUrl);
-    if (self.command.trim() === latest.trim()) {
-      console.log("Macro Loader | Self-update: already up to date.");
-      return;
-    }
-    await self.update({ command: latest });
-    ui.notifications.warn("🔄 Loader updated! Click it again to run the new version.");
-    Dialog.prompt({
-      title: "🔄 Loader Updated",
-      content: "<p>The loader macro was updated from GitHub.<br><strong>Run it again</strong> to use the new version.</p>",
-      callback: () => {},
-    });
   } catch (err) {
-    console.warn("Macro Loader | Self-update failed:", err.message);
+    console.warn("Macro Loader | Icon update failed:", err.message);
   }
 }
 

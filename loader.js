@@ -33,9 +33,11 @@ await runLoader();
 
 async function runLoader() {
   const startTime = Date.now();
+  ui.notifications.info(DEV_MODE
+    ? "🔧 Fetching macros (dev mode)..."
+    : "🔄 Fetching macro manifest from GitHub...");
 
   // ── Step 1: Fetch the manifest ─────────────────────────────────────────────
-  ui.notifications.info("📋 Fetching macro manifest from GitHub...");
   let manifest;
   try {
     const manifestUrl = buildApiUrl(MANIFEST_PATH);
@@ -47,13 +49,11 @@ async function runLoader() {
     return;
   }
 
-  ui.notifications.info(`📋 Manifest loaded — ${manifest.macros.length} macros available.`);
   console.log(`Macro Loader | Manifest v${manifest.version} loaded with ${manifest.macros.length} macros.`);
 
   // ── Step 1a: Load plugin manifests (Ctrl+Shift only) ───────────────────────
   let plugins = [];
   if (DEV_MODE) {
-    ui.notifications.info("🔧 Dev mode: loading plugin manifests...");
     plugins = await loadPluginManifests();
     if (plugins.length > 0) {
       let pluginMacroCount = 0;
@@ -61,13 +61,11 @@ async function runLoader() {
         pluginMacroCount += plugin.manifest.macros.length;
         manifest.macros.push(...plugin.manifest.macros);
       }
-      ui.notifications.info(`🔧 Loaded ${pluginMacroCount} dev macros from ${plugins.length} plugin(s).`);
       console.log(`Macro Loader | ${plugins.length} plugin(s) loaded with ${pluginMacroCount} additional macros.`);
     }
   }
 
   // ── Step 1b: Fetch the repo tree for SHA-based caching ─────────────────────
-  ui.notifications.info("🌳 Checking file versions for changes...");
   let fileTree = {};
   try {
     fileTree = await fetchFileTree();
@@ -84,20 +82,14 @@ async function runLoader() {
   // ── Step 2: Detect the user's actor ────────────────────────────────────────
   const actor = await resolveActor();
   if (actor) {
-    ui.notifications.info(`🎭 Configuring macros for ${actor.name}.`);
     console.log(`Macro Loader | Actor: ${actor.name}`);
   } else {
-    ui.notifications.info("🎭 No character found — installing utility macros only.");
     console.log("Macro Loader | No actor selected — installing only macros with no prerequisites.");
   }
 
   // ── Step 3: Build actor profile for prerequisite matching ──────────────────
   const profile = actor ? buildActorProfile(actor) : null;
   if (profile) {
-    const classStr = profile.classes.map(c => `${c.name} ${c.level}`).join(", ") || "none";
-    const featCount = profile.feats.length;
-    const itemCount = profile.items.length;
-    ui.notifications.info(`📊 ${actor.name}: ${classStr} | ${featCount} feats | ${itemCount} items`);
     console.log("Macro Loader | Actor profile:", profile);
   }
 
@@ -106,34 +98,19 @@ async function runLoader() {
   const skippedPrereqs = [];
 
   for (const entry of manifest.macros) {
-    const reason = getUnmetPrerequisite(entry.requires, profile);
-    if (!reason) {
+    if (meetsPrerequisites(entry.requires, profile)) {
       matched.push(entry);
     } else {
-      skippedPrereqs.push({ name: entry.name, reason });
+      skippedPrereqs.push(entry.id);
     }
   }
 
-  const hookCount = matched.filter(m => m.autoExecute).length;
-  const manualCount = matched.filter(m => !m.autoExecute).length;
-  ui.notifications.info(`✅ ${matched.length} macros match (${hookCount} hooks, ${manualCount} clickable).`);
-  if (skippedPrereqs.length > 0) {
-    // Group skipped macros by reason for cleaner display
-    const byReason = {};
-    for (const s of skippedPrereqs) {
-      (byReason[s.reason] ??= []).push(s.name);
-    }
-    for (const [reason, names] of Object.entries(byReason)) {
-      ui.notifications.info(`⏭️ Skipped (${reason}): ${names.join(", ")}`);
-    }
-  }
   console.log(`Macro Loader | ${matched.length} macros match prerequisites, ${skippedPrereqs.length} skipped.`);
 
   // ── Step 5: Dependency-sort matched macros ─────────────────────────────────
   const sorted = topologicalSort(matched);
 
   // ── Step 6: Install and execute macros ─────────────────────────────────────
-  ui.notifications.info("⚙️ Installing and activating macros...");
   const results = { installed: [], updated: [], cached: [], executed: [], failed: [] };
   const shaCache = game[SHA_CACHE_KEY] ?? {};
 
@@ -169,29 +146,27 @@ async function runLoader() {
 
   // ── Step 7: Report results ─────────────────────────────────────────────────
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-
+  const parts = [];
   const newCount = results.installed.length;
   const updCount = results.updated.length;
   const cachedCount = results.cached.length;
   const execCount = results.executed.length;
   const failCount = results.failed.length;
 
-  // Detailed breakdown
-  if (newCount > 0) ui.notifications.info(`📥 ${newCount} new: ${results.installed.join(", ")}`);
-  if (updCount > 0) ui.notifications.info(`🔄 ${updCount} updated: ${results.updated.join(", ")}`);
-  if (execCount > 0) ui.notifications.info(`⚡ ${execCount} hooks activated.`);
-  if (failCount > 0) ui.notifications.warn(`❌ ${failCount} failed: ${results.failed.join(", ")}`);
-
-  // Final summary
-  const actorInfo = actor ? ` for ${actor.name}` : "";
-  const parts = [];
   if (newCount > 0) parts.push(`${newCount} new`);
   if (updCount > 0) parts.push(`${updCount} updated`);
   if (cachedCount > 0) parts.push(`${cachedCount} cached`);
-  if (execCount > 0) parts.push(`${execCount} hooks active`);
+  if (execCount > 0) parts.push(`${execCount} hooks`);
   if (failCount > 0) parts.push(`${failCount} failed`);
 
-  ui.notifications.info(`🎲 Done! ${parts.join(" | ")}${actorInfo} (${elapsed}s)`);
+  const summary = `🎲 Macro Loader: ${parts.join(", ")} (${elapsed}s)`;
+  const actorInfo = actor ? ` for ${actor.name}` : "";
+
+  if (failCount > 0) {
+    ui.notifications.warn(`${summary}${actorInfo} — Failed: ${results.failed.join(", ")}`);
+  } else {
+    ui.notifications.info(`${summary}${actorInfo}`);
+  }
 
   game[LOADER_FLAG] = { ...results, actorName: actor?.name, timestamp: Date.now() };
 
@@ -291,19 +266,20 @@ function buildActorProfile(actor) {
 
 // ─── Prerequisite Matching ───────────────────────────────────────────────────
 
-// Returns null if all prerequisites met, or a human-readable reason string if not.
-function getUnmetPrerequisite(requires, profile) {
-  if (!requires || Object.keys(requires).length === 0) return null;
-  if (!profile) return "no character";
+function meetsPrerequisites(requires, profile) {
+  if (!requires || Object.keys(requires).length === 0) return true;
+  if (!profile) return false;
 
+  // Class check: identifier or name match
   if (requires.class) {
     const target = requires.class.toLowerCase();
     const hasClass = profile.classes.some(c =>
       c.identifier === target || c.name === target
     );
-    if (!hasClass) return `not a ${requires.class}`;
+    if (!hasClass) return false;
   }
 
+  // Subclass check: identifier or name (partial) match
   if (requires.subclass) {
     const target = requires.subclass.toLowerCase();
     const hasSub = profile.subclasses.some(s =>
@@ -311,50 +287,51 @@ function getUnmetPrerequisite(requires, profile) {
       || s.name === target
       || s.name?.includes(target)
     );
-    if (!hasSub) return `no ${requires.subclass} subclass`;
+    if (!hasSub) return false;
   }
 
+  // Minimum level check (on the required class)
   if (requires.minLevel) {
     const target = requires.class?.toLowerCase();
     const classInfo = target
       ? profile.classes.find(c => c.identifier === target || c.name === target)
       : profile.classes[0];
-    if (!classInfo || classInfo.level < requires.minLevel) return `level ${classInfo?.level ?? 0} < ${requires.minLevel}`;
+    if (!classInfo || classInfo.level < requires.minLevel) return false;
   }
 
+  // Feat check: exact name match
   if (requires.feat) {
     const hasFeat = profile.feats.some(f =>
       f.toLowerCase() === requires.feat.toLowerCase()
     );
-    if (!hasFeat) return `no "${requires.feat}" feat`;
+    if (!hasFeat) return false;
   }
 
+  // Item check: partial name match (substring)
   if (requires.item) {
     const target = requires.item.toLowerCase();
     const hasItem = profile.items.some(i =>
       i.toLowerCase().includes(target)
     );
-    if (!hasItem) return `no "${requires.item}" item`;
+    if (!hasItem) return false;
   }
 
+  // Race check: partial name match
   if (requires.race) {
-    if (!profile.race) return `no race data`;
+    if (!profile.race) return false;
     const hasRace = profile.race.toLowerCase().includes(requires.race.toLowerCase());
-    if (!hasRace) return `not ${requires.race}`;
+    if (!hasRace) return false;
   }
 
+  // Spell check: exact name match
   if (requires.spell) {
     const hasSpell = profile.spells.some(s =>
       s.toLowerCase() === requires.spell.toLowerCase()
     );
-    if (!hasSpell) return `no "${requires.spell}" spell`;
+    if (!hasSpell) return false;
   }
 
-  return null;
-}
-
-function meetsPrerequisites(requires, profile) {
-  return getUnmetPrerequisite(requires, profile) === null;
+  return true;
 }
 
 // ─── Dependency Sorting ──────────────────────────────────────────────────────

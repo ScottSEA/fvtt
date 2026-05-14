@@ -106,16 +106,27 @@ async function runLoader() {
   const skippedPrereqs = [];
 
   for (const entry of manifest.macros) {
-    if (meetsPrerequisites(entry.requires, profile)) {
+    const reason = getUnmetPrerequisite(entry.requires, profile);
+    if (!reason) {
       matched.push(entry);
     } else {
-      skippedPrereqs.push(entry.id);
+      skippedPrereqs.push({ name: entry.name, reason });
     }
   }
 
   const hookCount = matched.filter(m => m.autoExecute).length;
   const manualCount = matched.filter(m => !m.autoExecute).length;
-  ui.notifications.info(`✅ ${matched.length} macros match (${hookCount} hooks, ${manualCount} clickable) | ${skippedPrereqs.length} skipped.`);
+  ui.notifications.info(`✅ ${matched.length} macros match (${hookCount} hooks, ${manualCount} clickable).`);
+  if (skippedPrereqs.length > 0) {
+    // Group skipped macros by reason for cleaner display
+    const byReason = {};
+    for (const s of skippedPrereqs) {
+      (byReason[s.reason] ??= []).push(s.name);
+    }
+    for (const [reason, names] of Object.entries(byReason)) {
+      ui.notifications.info(`⏭️ Skipped (${reason}): ${names.join(", ")}`);
+    }
+  }
   console.log(`Macro Loader | ${matched.length} macros match prerequisites, ${skippedPrereqs.length} skipped.`);
 
   // ── Step 5: Dependency-sort matched macros ─────────────────────────────────
@@ -280,20 +291,19 @@ function buildActorProfile(actor) {
 
 // ─── Prerequisite Matching ───────────────────────────────────────────────────
 
-function meetsPrerequisites(requires, profile) {
-  if (!requires || Object.keys(requires).length === 0) return true;
-  if (!profile) return false;
+// Returns null if all prerequisites met, or a human-readable reason string if not.
+function getUnmetPrerequisite(requires, profile) {
+  if (!requires || Object.keys(requires).length === 0) return null;
+  if (!profile) return "no character";
 
-  // Class check: identifier or name match
   if (requires.class) {
     const target = requires.class.toLowerCase();
     const hasClass = profile.classes.some(c =>
       c.identifier === target || c.name === target
     );
-    if (!hasClass) return false;
+    if (!hasClass) return `not a ${requires.class}`;
   }
 
-  // Subclass check: identifier or name (partial) match
   if (requires.subclass) {
     const target = requires.subclass.toLowerCase();
     const hasSub = profile.subclasses.some(s =>
@@ -301,51 +311,50 @@ function meetsPrerequisites(requires, profile) {
       || s.name === target
       || s.name?.includes(target)
     );
-    if (!hasSub) return false;
+    if (!hasSub) return `no ${requires.subclass} subclass`;
   }
 
-  // Minimum level check (on the required class)
   if (requires.minLevel) {
     const target = requires.class?.toLowerCase();
     const classInfo = target
       ? profile.classes.find(c => c.identifier === target || c.name === target)
       : profile.classes[0];
-    if (!classInfo || classInfo.level < requires.minLevel) return false;
+    if (!classInfo || classInfo.level < requires.minLevel) return `level ${classInfo?.level ?? 0} < ${requires.minLevel}`;
   }
 
-  // Feat check: exact name match
   if (requires.feat) {
     const hasFeat = profile.feats.some(f =>
       f.toLowerCase() === requires.feat.toLowerCase()
     );
-    if (!hasFeat) return false;
+    if (!hasFeat) return `no "${requires.feat}" feat`;
   }
 
-  // Item check: partial name match (substring)
   if (requires.item) {
     const target = requires.item.toLowerCase();
     const hasItem = profile.items.some(i =>
       i.toLowerCase().includes(target)
     );
-    if (!hasItem) return false;
+    if (!hasItem) return `no "${requires.item}" item`;
   }
 
-  // Race check: partial name match
   if (requires.race) {
-    if (!profile.race) return false;
+    if (!profile.race) return `no race data`;
     const hasRace = profile.race.toLowerCase().includes(requires.race.toLowerCase());
-    if (!hasRace) return false;
+    if (!hasRace) return `not ${requires.race}`;
   }
 
-  // Spell check: exact name match
   if (requires.spell) {
     const hasSpell = profile.spells.some(s =>
       s.toLowerCase() === requires.spell.toLowerCase()
     );
-    if (!hasSpell) return false;
+    if (!hasSpell) return `no "${requires.spell}" spell`;
   }
 
-  return true;
+  return null;
+}
+
+function meetsPrerequisites(requires, profile) {
+  return getUnmetPrerequisite(requires, profile) === null;
 }
 
 // ─── Dependency Sorting ──────────────────────────────────────────────────────

@@ -33,11 +33,9 @@ await runLoader();
 
 async function runLoader() {
   const startTime = Date.now();
-  ui.notifications.info(DEV_MODE
-    ? "🔧 Fetching macros (dev mode)..."
-    : "🔄 Fetching macro manifest from GitHub...");
 
   // ── Step 1: Fetch the manifest ─────────────────────────────────────────────
+  ui.notifications.info("📋 Fetching macro manifest from GitHub...");
   let manifest;
   try {
     const manifestUrl = buildApiUrl(MANIFEST_PATH);
@@ -49,11 +47,13 @@ async function runLoader() {
     return;
   }
 
+  ui.notifications.info(`📋 Manifest loaded — ${manifest.macros.length} macros available.`);
   console.log(`Macro Loader | Manifest v${manifest.version} loaded with ${manifest.macros.length} macros.`);
 
   // ── Step 1a: Load plugin manifests (Ctrl+Shift only) ───────────────────────
   let plugins = [];
   if (DEV_MODE) {
+    ui.notifications.info("🔧 Dev mode: loading plugin manifests...");
     plugins = await loadPluginManifests();
     if (plugins.length > 0) {
       let pluginMacroCount = 0;
@@ -61,11 +61,13 @@ async function runLoader() {
         pluginMacroCount += plugin.manifest.macros.length;
         manifest.macros.push(...plugin.manifest.macros);
       }
+      ui.notifications.info(`🔧 Loaded ${pluginMacroCount} dev macros from ${plugins.length} plugin(s).`);
       console.log(`Macro Loader | ${plugins.length} plugin(s) loaded with ${pluginMacroCount} additional macros.`);
     }
   }
 
   // ── Step 1b: Fetch the repo tree for SHA-based caching ─────────────────────
+  ui.notifications.info("🌳 Checking file versions for changes...");
   let fileTree = {};
   try {
     fileTree = await fetchFileTree();
@@ -82,14 +84,20 @@ async function runLoader() {
   // ── Step 2: Detect the user's actor ────────────────────────────────────────
   const actor = await resolveActor();
   if (actor) {
+    ui.notifications.info(`🎭 Configuring macros for ${actor.name}.`);
     console.log(`Macro Loader | Actor: ${actor.name}`);
   } else {
+    ui.notifications.info("🎭 No character found — installing utility macros only.");
     console.log("Macro Loader | No actor selected — installing only macros with no prerequisites.");
   }
 
   // ── Step 3: Build actor profile for prerequisite matching ──────────────────
   const profile = actor ? buildActorProfile(actor) : null;
   if (profile) {
+    const classStr = profile.classes.map(c => `${c.name} ${c.level}`).join(", ") || "none";
+    const featCount = profile.feats.length;
+    const itemCount = profile.items.length;
+    ui.notifications.info(`📊 ${actor.name}: ${classStr} | ${featCount} feats | ${itemCount} items`);
     console.log("Macro Loader | Actor profile:", profile);
   }
 
@@ -105,12 +113,16 @@ async function runLoader() {
     }
   }
 
+  const hookCount = matched.filter(m => m.autoExecute).length;
+  const manualCount = matched.filter(m => !m.autoExecute).length;
+  ui.notifications.info(`✅ ${matched.length} macros match (${hookCount} hooks, ${manualCount} clickable) | ${skippedPrereqs.length} skipped.`);
   console.log(`Macro Loader | ${matched.length} macros match prerequisites, ${skippedPrereqs.length} skipped.`);
 
   // ── Step 5: Dependency-sort matched macros ─────────────────────────────────
   const sorted = topologicalSort(matched);
 
   // ── Step 6: Install and execute macros ─────────────────────────────────────
+  ui.notifications.info("⚙️ Installing and activating macros...");
   const results = { installed: [], updated: [], cached: [], executed: [], failed: [] };
   const shaCache = game[SHA_CACHE_KEY] ?? {};
 
@@ -146,27 +158,29 @@ async function runLoader() {
 
   // ── Step 7: Report results ─────────────────────────────────────────────────
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  const parts = [];
+
   const newCount = results.installed.length;
   const updCount = results.updated.length;
   const cachedCount = results.cached.length;
   const execCount = results.executed.length;
   const failCount = results.failed.length;
 
+  // Detailed breakdown
+  if (newCount > 0) ui.notifications.info(`📥 ${newCount} new: ${results.installed.join(", ")}`);
+  if (updCount > 0) ui.notifications.info(`🔄 ${updCount} updated: ${results.updated.join(", ")}`);
+  if (execCount > 0) ui.notifications.info(`⚡ ${execCount} hooks activated.`);
+  if (failCount > 0) ui.notifications.warn(`❌ ${failCount} failed: ${results.failed.join(", ")}`);
+
+  // Final summary
+  const actorInfo = actor ? ` for ${actor.name}` : "";
+  const parts = [];
   if (newCount > 0) parts.push(`${newCount} new`);
   if (updCount > 0) parts.push(`${updCount} updated`);
   if (cachedCount > 0) parts.push(`${cachedCount} cached`);
-  if (execCount > 0) parts.push(`${execCount} hooks`);
+  if (execCount > 0) parts.push(`${execCount} hooks active`);
   if (failCount > 0) parts.push(`${failCount} failed`);
 
-  const summary = `🎲 Macro Loader: ${parts.join(", ")} (${elapsed}s)`;
-  const actorInfo = actor ? ` for ${actor.name}` : "";
-
-  if (failCount > 0) {
-    ui.notifications.warn(`${summary}${actorInfo} — Failed: ${results.failed.join(", ")}`);
-  } else {
-    ui.notifications.info(`${summary}${actorInfo}`);
-  }
+  ui.notifications.info(`🎲 Done! ${parts.join(" | ")}${actorInfo} (${elapsed}s)`);
 
   game[LOADER_FLAG] = { ...results, actorName: actor?.name, timestamp: Date.now() };
 

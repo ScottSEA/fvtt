@@ -9,6 +9,8 @@
  * Ctrl+Shift activates dev mode for loading private repo macros.
  */
 
+(async () => {
+
 const REPO_OWNER = "ScottSEA";
 const REPO_NAME = "fvtt";
 const BRANCH = "main";
@@ -588,4 +590,5 @@ async function fetchFileContent(apiUrl, token) {
   }
   return await response.text();
 }
-// END: GITHUB MACRO LOADER
+
+})(); // END: GITHUB MACRO LOADER

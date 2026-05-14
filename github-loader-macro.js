@@ -13,15 +13,17 @@ const REPO_NAME = "fvtt";
 const BRANCH = "main";
 const LOADER_FILE = "loader.js";
 
-try {
-  const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${LOADER_FILE}?ref=${BRANCH}&_=${Date.now()}`;
-  const response = await fetch(url, {
-    headers: { Accept: "application/vnd.github.v3.raw" },
-  });
-  if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-  const code = await response.text();
-  eval.call(globalThis, code);
-} catch (err) {
-  ui.notifications.error(`Macro Loader failed: ${err.message}`);
-  console.error("Macro Loader | Bootstrap error:", err);
-}
+(async () => {
+  try {
+    const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${LOADER_FILE}?ref=${BRANCH}&_=${Date.now()}`;
+    const response = await fetch(url, {
+      headers: { Accept: "application/vnd.github.v3.raw" },
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    const code = await response.text();
+    eval.call(globalThis, code);
+  } catch (err) {
+    ui.notifications.error(`Macro Loader failed: ${err.message}`);
+    console.error("Macro Loader | Bootstrap error:", err);
+  }
+})();

@@ -7,7 +7,7 @@
 
 const MACRO_ICON = "fa-trash-can";
 
-const loader = game.macros.find(m => m.command?.includes("_githubLoaderResults") && m.author?.id === game.user.id);
+const loader = game.macros.find(m => m.command?.includes("BOOTSTRAP STUB") && m.author?.id === game.user.id);
 const mine = game.macros.filter(m => m.author?.id === game.user.id && m.id !== loader?.id);
 
 if (mine.length === 0) {

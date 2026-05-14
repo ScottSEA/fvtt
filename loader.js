@@ -170,7 +170,16 @@ async function runLoader() {
 
   game[LOADER_FLAG] = { ...results, actorName: actor?.name, timestamp: Date.now() };
 
-  // ── Done ──
+  // ── Set loader icon ────────────────────────────────────────────────────────
+  try {
+    const self = game.macros.find(m =>
+      m.command?.includes("BOOTSTRAP STUB") && m.author?.id === game.user.id
+    );
+    if (self) {
+      const img = await resolveIcon(LOADER_ICON);
+      if (img && self.img !== img) await self.update({ img });
+    }
+  } catch (err) { /* non-critical */ }
 }
 
 // ─── Actor Detection ─────────────────────────────────────────────────────────

@@ -5,9 +5,26 @@
  * It fetches the real loader from GitHub and executes it.
  * Always runs the latest version — no manual updates needed.
  *
- * Ctrl+Shift activates dev mode: prompts for a private plugin repo,
- * fetches its manifest, and passes the extra macros to the loader
- * via game._ghLoaderPluginData.
+ * ─── Dev Mode (Ctrl+Shift) ───────────────────────────────────────────────────
+ *
+ * Hold Ctrl+Shift while clicking/running this macro to activate dev mode.
+ * Dev mode loads additional macros from a private GitHub repository.
+ *
+ * On first dev-mode run:   prompts for repo owner/name, PAT, and branch.
+ * On subsequent runs:      shows a management dialog to add, remove, or
+ *                          skip plugins for the current session.
+ *
+ * PAT Requirements:
+ *   - Fine-grained PAT with "Contents: Read-only" on the target repo, or
+ *   - Classic PAT with `repo` scope.
+ *
+ * Security Model:
+ *   - PAT is stored only in browser memory (game[] object) for the session.
+ *   - PAT is NEVER persisted to disk, localStorage, Foundry DB, or logs.
+ *   - PAT is NEVER written to Macro document command fields.
+ *   - Private macro source code IS persisted in Foundry for manual (non-hook)
+ *     macros — treat plugin macros as "private for distribution, not secret."
+ *   - On page reload, all plugin configs are lost and must be re-entered.
  *
  * To install: create a new Script macro in Foundry, paste this code, and run it.
  */
@@ -32,7 +49,7 @@ const PLUGIN_KEY = "_ghLoaderPlugins";
         const pluginData = await loadPlugins();
         if (pluginData) game._ghLoaderPluginData = pluginData;
       } catch (err) {
-        console.error("Macro Loader | Plugin loading failed:", err);
+        console.error("Macro Loader | Plugin loading failed:", err.message);
         ui.notifications.warn(`Dev plugin loading failed: ${err.message}`);
       }
     }
@@ -47,35 +64,36 @@ const PLUGIN_KEY = "_ghLoaderPlugins";
     eval.call(globalThis, code);
   } catch (err) {
     ui.notifications.error(`Macro Loader failed: ${err.message}`);
-    console.error("Macro Loader | Bootstrap error:", err);
+    console.error("Macro Loader | Bootstrap error:", err.message);
   }
 })();
 
 // ─── Plugin System (Dev Mode Only) ────────────────────────────────────────────
 
 async function loadPlugins() {
-  const plugins = game[PLUGIN_KEY] ?? [];
-
-  // On first dev-mode run, prompt to add a plugin
+  // First dev-mode run: prompt for a single plugin
+  // Subsequent runs: show management dialog
   if (!game[PLUGIN_KEY]) {
     game[PLUGIN_KEY] = [];
     const plugin = await promptPluginSetup();
-    if (plugin) {
-      game[PLUGIN_KEY].push(plugin);
-      plugins.push(plugin);
-    }
+    if (plugin) game[PLUGIN_KEY].push(plugin);
+  } else {
+    const action = await promptPluginManagement();
+    if (action === "skip") return null;
   }
 
+  const plugins = game[PLUGIN_KEY];
   if (plugins.length === 0) return null;
 
   const extraMacros = [];
   const extraFileTree = {};
 
   for (const plugin of plugins) {
+    const label = `${plugin.owner}/${plugin.repo}`;
     try {
       const token = plugin.token;
       if (!token) {
-        console.warn(`Macro Loader | Plugin ${plugin.owner}/${plugin.repo} has no PAT, skipping.`);
+        console.warn(`Macro Loader | Plugin ${label} has no PAT, skipping.`);
         continue;
       }
       const apiBase = `https://api.github.com/repos/${plugin.owner}/${plugin.repo}`;
@@ -87,11 +105,34 @@ async function loadPlugins() {
       const res = await fetch(manifestUrl, {
         headers: { Accept: "application/vnd.github.v3.raw", Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-      const pluginManifest = JSON.parse(await res.text());
+
+      if (!res.ok) {
+        const msg = res.status === 401 ? "PAT is invalid or expired"
+                  : res.status === 403 ? "PAT lacks access (check scope, SSO, or org policy)"
+                  : res.status === 404 ? "Repo, branch, or manifest not found (or PAT lacks visibility)"
+                  : `HTTP ${res.status}: ${res.statusText}`;
+        ui.notifications.warn(`Plugin ${label}: ${msg}`);
+        console.warn(`Macro Loader | Plugin ${label} failed: ${msg}`);
+        continue;
+      }
+
+      let pluginManifest;
+      try {
+        pluginManifest = JSON.parse(await res.text());
+      } catch (parseErr) {
+        ui.notifications.warn(`Plugin ${label}: Manifest is not valid JSON.`);
+        console.warn(`Macro Loader | Plugin ${label} manifest parse error:`, parseErr.message);
+        continue;
+      }
+
+      if (!Array.isArray(pluginManifest.macros)) {
+        ui.notifications.warn(`Plugin ${label}: Manifest missing "macros" array.`);
+        console.warn(`Macro Loader | Plugin ${label} manifest has no macros array.`);
+        continue;
+      }
 
       // Pre-resolve each macro entry with its fetch URL and token
-      for (const entry of pluginManifest.macros ?? []) {
+      for (const entry of pluginManifest.macros) {
         entry._apiUrl = `${apiBase}/contents/${entry.path}?ref=${branch}`;
         entry._token = token;
         entry.id = `${plugin.owner}/${plugin.repo}:${entry.id}`;
@@ -110,31 +151,33 @@ async function loadPlugins() {
             if (e.type === "blob") extraFileTree[e.path] = e.sha;
           }
         }
-      } catch (err) {
-        console.warn(`Macro Loader | Plugin tree fetch failed for ${plugin.owner}/${plugin.repo}:`, err.message);
+      } catch (treeErr) {
+        console.warn(`Macro Loader | Plugin ${label} tree fetch failed:`, treeErr.message);
       }
 
-      console.log(`Macro Loader | Plugin ${plugin.owner}/${plugin.repo} loaded (${pluginManifest.macros?.length ?? 0} macros).`);
+      console.log(`Macro Loader | Plugin ${label} loaded (${pluginManifest.macros.length} macros).`);
     } catch (err) {
-      console.error(`Macro Loader | Plugin ${plugin.owner}/${plugin.repo} failed:`, err);
-      ui.notifications.warn(`Plugin ${plugin.owner}/${plugin.repo} failed to load.`);
+      console.warn(`Macro Loader | Plugin ${label} failed:`, err.message);
+      ui.notifications.warn(`Plugin ${label} failed to load.`);
     }
   }
 
   return extraMacros.length > 0 ? { macros: extraMacros, fileTree: extraFileTree } : null;
 }
 
+// ─── Plugin Dialogs ──────────────────────────────────────────────────────────
+
 function promptPluginSetup() {
   return Dialog.prompt({
-    title: "🔧 Dev Macros — Private Repo",
+    title: "🔧 Dev Mode — Add Plugin Repo",
     content: `
-      <p style="margin-bottom:8px;">Enter the private repo and PAT for dev macros.
+      <p style="margin-bottom:8px;">Enter a private GitHub repo and PAT for dev macros.
       Leave blank to skip.</p>
       <div style="display:grid; gap:6px;">
         <label style="font-size:12px;">Repo owner/name (e.g. <code>MyUser/fvtt-dev</code>)
           <input type="text" name="plugin-repo" style="width:100%" placeholder="owner/repo">
         </label>
-        <label style="font-size:12px;">PAT with read access to this repo
+        <label style="font-size:12px;">PAT with read access
           <input type="password" name="plugin-token" style="width:100%" placeholder="ghp_...">
         </label>
         <label style="font-size:12px;">Branch (default: main)
@@ -152,4 +195,78 @@ function promptPluginSetup() {
     },
     rejectClose: false,
   });
+}
+
+async function promptPluginManagement() {
+  const plugins = game[PLUGIN_KEY];
+
+  const listHtml = plugins.length > 0
+    ? plugins.map((p, i) =>
+        `<div style="display:flex; align-items:center; gap:6px; padding:4px 0;">
+          <input type="checkbox" name="remove-${i}" id="remove-${i}">
+          <label for="remove-${i}" style="font-size:12px; margin:0;">
+            <code>${p.owner}/${p.repo}</code> (${p.branch ?? "main"})
+          </label>
+        </div>`
+      ).join("")
+    : `<p style="color:#888; font-size:12px;">No plugins configured.</p>`;
+
+  return new Promise(resolve => {
+    new Dialog({
+      title: "🔧 Dev Mode — Manage Plugins",
+      content: `
+        <p style="margin-bottom:6px;"><strong>Current plugins:</strong></p>
+        ${listHtml}
+        <hr style="margin:8px 0;">
+        <p style="font-size:11px; color:#888;">
+          Check plugins to remove. Use buttons below to add, continue, or skip.
+        </p>`,
+      buttons: {
+        add: {
+          icon: '<i class="fas fa-plus"></i>',
+          label: "Add",
+          callback: async html => {
+            removeCheckedPlugins(html);
+            const plugin = await promptPluginSetup();
+            if (plugin) game[PLUGIN_KEY].push(plugin);
+            resolve(await promptPluginManagement());
+          },
+        },
+        remove: {
+          icon: '<i class="fas fa-trash"></i>',
+          label: "Remove Checked",
+          callback: async html => {
+            removeCheckedPlugins(html);
+            resolve(await promptPluginManagement());
+          },
+        },
+        cont: {
+          icon: '<i class="fas fa-play"></i>',
+          label: "Continue",
+          callback: html => {
+            removeCheckedPlugins(html);
+            resolve("continue");
+          },
+        },
+        skip: {
+          icon: '<i class="fas fa-forward"></i>',
+          label: "Skip This Run",
+          callback: () => resolve("skip"),
+        },
+      },
+      default: "cont",
+      close: () => resolve("continue"),
+    }).render(true);
+  });
+}
+
+function removeCheckedPlugins(html) {
+  const plugins = game[PLUGIN_KEY];
+  const toRemove = [];
+  for (let i = plugins.length - 1; i >= 0; i--) {
+    if (html.find(`[name=remove-${i}]`).is(":checked")) {
+      toRemove.push(i);
+    }
+  }
+  for (const i of toRemove) plugins.splice(i, 1);
 }

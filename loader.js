@@ -35,7 +35,7 @@ async function runLoader() {
     manifest = JSON.parse(raw);
   } catch (err) {
     ui.notifications.error(`Macro Loader: Failed to fetch manifest — ${err.message}`);
-    console.error("Macro Loader | Manifest fetch failed:", err);
+    console.error("Macro Loader | Manifest fetch failed:", err.message);
     return;
   }
 
@@ -111,7 +111,7 @@ async function runLoader() {
           eval.call(globalThis, result.code);
           results.executed.push(entry.name);
         } catch (execErr) {
-          console.error(`Macro Loader | ❌ Execute failed for ${entry.name}:`, execErr);
+          console.error(`Macro Loader | ❌ Execute failed for ${entry.name}:`, execErr.message);
           results.failed.push(`${entry.name} (exec)`);
         }
       } else {
@@ -121,7 +121,7 @@ async function runLoader() {
       }
     } catch (err) {
       results.failed.push(entry.name);
-      console.error(`Macro Loader | ❌ ${entry.name} failed:`, err);
+      console.error(`Macro Loader | ❌ ${entry.name} failed:`, err.message);
     }
   }
 

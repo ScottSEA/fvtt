@@ -310,6 +310,120 @@
       }
     },
     {
+      "id": "hunters-mark",
+      "name": "Hunter's Mark",
+      "path": "classes/ranger/hunters-mark-macro.js",
+      "description": "Reminder banner on attacks when concentrating on Hunter's Mark; add 1d6 damage",
+      "category": "class",
+      "autoExecute": true,
+      "requires": {
+        "class": "ranger",
+        "spell": "Hunter's Mark"
+      }
+    },
+    {
+      "id": "favored-foe",
+      "name": "Favored Foe",
+      "path": "classes/ranger/favored-foe-macro.js",
+      "description": "Reminder banner on attacks to mark target with Favored Foe for extra 1d6 damage",
+      "category": "class",
+      "autoExecute": true,
+      "requires": {
+        "class": "ranger",
+        "feat": "Favored Foe"
+      }
+    },
+    {
+      "id": "concentration-check",
+      "name": "Concentration Check",
+      "path": "utilities/concentration-check-macro.js",
+      "description": "CON save reminder when a concentrating character takes damage",
+      "category": "utility",
+      "autoExecute": true,
+      "requires": {}
+    },
+    {
+      "id": "counterspell",
+      "name": "Counterspell",
+      "path": "feats/counterspell-macro.js",
+      "description": "Reaction prompt when enemy casts a spell within range",
+      "category": "feat",
+      "autoExecute": true,
+      "requires": { "spell": "Counterspell" }
+    },
+    {
+      "id": "sneak-attack",
+      "name": "Sneak Attack",
+      "path": "classes/rogue/sneak-attack-macro.js",
+      "description": "Banner reminder for Sneak Attack on finesse/ranged weapon attacks",
+      "category": "class",
+      "autoExecute": true,
+      "requires": {
+        "class": "rogue",
+        "feat": "Sneak Attack"
+      }
+    },
+    {
+      "id": "uncanny-dodge",
+      "name": "Uncanny Dodge",
+      "path": "classes/rogue/uncanny-dodge-macro.js",
+      "description": "Reaction reminder when an incoming attack hits the Rogue",
+      "category": "class",
+      "autoExecute": true,
+      "requires": {
+        "class": "rogue",
+        "feat": "Uncanny Dodge"
+      }
+    },
+    {
+      "id": "evasion",
+      "name": "Evasion",
+      "path": "classes/rogue/evasion-macro.js",
+      "description": "DEX save damage modifier reminder for Evasion feature",
+      "category": "class",
+      "autoExecute": true,
+      "requires": {
+        "class": "rogue",
+        "feat": "Evasion"
+      }
+    },
+    {
+      "id": "divine-smite",
+      "name": "Divine Smite",
+      "path": "classes/paladin/divine-smite-macro.js",
+      "description": "Smite buttons on melee attack hits; rolls radiant damage and consumes spell slot",
+      "category": "class",
+      "autoExecute": true,
+      "requires": {
+        "class": "paladin",
+        "feat": "Divine Smite"
+      }
+    },
+    {
+      "id": "lay-on-hands",
+      "name": "Lay on Hands",
+      "path": "classes/paladin/lay-on-hands-macro.js",
+      "description": "Healing pool reminder on turn start when Paladin or allies are damaged",
+      "category": "class",
+      "autoExecute": true,
+      "requires": {
+        "class": "paladin",
+        "feat": "Lay on Hands"
+      }
+    },
+    {
+      "id": "aura-of-protection",
+      "name": "Aura of Protection",
+      "path": "classes/paladin/aura-of-protection-macro.js",
+      "description": "Saving throw reminder with Paladin CHA modifier bonus for nearby allies",
+      "category": "class",
+      "autoExecute": true,
+      "requires": {
+        "class": "paladin",
+        "feat": "Aura of Protection"
+      }
+    },
+    {
       "id": "token-dashboard",
       "name": "Token Dashboard",
       "path": "utilities/token-dashboard-macro.js",

@@ -6,7 +6,6 @@
  *
  * Inspects the user's actor and installs only macros whose
  * prerequisites match the character. No authentication required.
- * Ctrl+Shift activates dev mode for loading private repo macros.
  */
 
 (async () => {
@@ -20,21 +19,13 @@ const LOADER_ICON = "fa-download";
 const LOADER_FLAG = "_githubLoaderResults";
 const SHA_CACHE_KEY = "_ghLoaderShaCache";
 const ACTOR_KEY = "_ghLoaderActorId";
-const PLUGIN_KEY = "_ghLoaderPlugins";
 const FA_SVG_BASE = "https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid";
-
-// Dev mode flag set by bootstrap stub before the async fetch
-const DEV_MODE = !!game._ghLoaderDevMode;
-
-if (DEV_MODE) console.log("Macro Loader | Dev mode activated (Ctrl+Shift held).");
 
 await runLoader();
 
 async function runLoader() {
   const startTime = Date.now();
-  ui.notifications.info(DEV_MODE
-    ? "🔧 Fetching macros (dev mode)..."
-    : "🔄 Fetching macro manifest from GitHub...");
+  ui.notifications.info("🔄 Fetching macro manifest from GitHub...");
 
   // ── Step 1: Fetch the manifest ─────────────────────────────────────────────
   let manifest;
@@ -50,18 +41,11 @@ async function runLoader() {
 
   console.log(`Macro Loader | Manifest v${manifest.version} loaded with ${manifest.macros.length} macros.`);
 
-  // ── Step 1a: Load plugin manifests (Ctrl+Shift only) ───────────────────────
-  let plugins = [];
-  if (DEV_MODE) {
-    plugins = await loadPluginManifests();
-    if (plugins.length > 0) {
-      let pluginMacroCount = 0;
-      for (const plugin of plugins) {
-        pluginMacroCount += plugin.manifest.macros.length;
-        manifest.macros.push(...plugin.manifest.macros);
-      }
-      console.log(`Macro Loader | ${plugins.length} plugin(s) loaded with ${pluginMacroCount} additional macros.`);
-    }
+  // ── Step 1a: Merge plugin macros (pre-loaded by bootstrap stub) ────────────
+  const pluginData = game._ghLoaderPluginData;
+  if (pluginData?.macros?.length) {
+    manifest.macros.push(...pluginData.macros);
+    console.log(`Macro Loader | ${pluginData.macros.length} plugin macro(s) merged.`);
   }
 
   // ── Step 1b: Fetch the repo tree for SHA-based caching ─────────────────────
@@ -73,9 +57,9 @@ async function runLoader() {
     console.warn("Macro Loader | Tree fetch failed, all files will be re-fetched:", err.message);
   }
 
-  // Merge plugin file trees
-  for (const plugin of plugins) {
-    if (plugin.fileTree) Object.assign(fileTree, plugin.fileTree);
+  // Merge plugin file tree
+  if (pluginData?.fileTree) {
+    Object.assign(fileTree, pluginData.fileTree);
   }
 
   // ── Step 2: Detect the user's actor ────────────────────────────────────────
@@ -360,7 +344,7 @@ function topologicalSort(macros) {
 async function loadHookMacro(entry, shaCache, fileTree) {
   const cached = shaCache[entry.id];
   const currentSha = fileTree[entry.path];
-  const token = entry._pluginToken ?? null;
+  const token = entry._token ?? null;
 
   // SHA cache hit — reuse previously fetched code from cache
   if (cached?.sha && currentSha && cached.sha === currentSha && cached.code) {
@@ -368,9 +352,7 @@ async function loadHookMacro(entry, shaCache, fileTree) {
   }
 
   // Fetch the macro source from GitHub
-  const apiUrl = entry._pluginApiBase
-    ? `${entry._pluginApiBase}/contents/${entry.path}?ref=${entry._pluginBranch ?? "main"}`
-    : buildApiUrl(entry.path);
+  const apiUrl = entry._apiUrl ?? buildApiUrl(entry.path);
   const code = await fetchFileContent(apiUrl, token);
 
   shaCache[entry.id] = { sha: currentSha ?? Date.now().toString(), code };
@@ -382,7 +364,7 @@ async function loadHookMacro(entry, shaCache, fileTree) {
 async function installMacroDocument(entry, shaCache, fileTree) {
   const cached = shaCache[entry.id];
   const currentSha = fileTree[entry.path];
-  const token = entry._pluginToken ?? null;
+  const token = entry._token ?? null;
 
   // SHA cache hit — check if Macro document already exists
   if (cached?.sha && currentSha && cached.sha === currentSha) {
@@ -395,9 +377,7 @@ async function installMacroDocument(entry, shaCache, fileTree) {
   }
 
   // Fetch the macro source from GitHub
-  const apiUrl = entry._pluginApiBase
-    ? `${entry._pluginApiBase}/contents/${entry.path}?ref=${entry._pluginBranch ?? "main"}`
-    : buildApiUrl(entry.path);
+  const apiUrl = entry._apiUrl ?? buildApiUrl(entry.path);
   const code = await fetchFileContent(apiUrl, token);
 
   // Resolve icon from the macro source
@@ -465,107 +445,6 @@ async function resolveIcon(iconValue) {
     console.warn(`Macro Loader | Failed to fetch FA icon "${name}":`, err.message);
     return null;
   }
-}
-
-// ─── Plugin Manifests (Private Repos) ─────────────────────────────────────────
-
-async function loadPluginManifests() {
-  const plugins = game[PLUGIN_KEY] ?? [];
-
-  // On first dev-mode run, prompt to add a plugin
-  if (!game[PLUGIN_KEY]) {
-    game[PLUGIN_KEY] = [];
-    const plugin = await promptPluginSetup();
-    if (plugin) {
-      game[PLUGIN_KEY].push(plugin);
-      plugins.push(plugin);
-    }
-  }
-
-  if (plugins.length === 0) return [];
-
-  const loaded = [];
-  for (const plugin of plugins) {
-    try {
-      const token = plugin.token;
-      if (!token) {
-        console.warn(`Macro Loader | Plugin ${plugin.owner}/${plugin.repo} has no PAT, skipping.`);
-        continue;
-      }
-      const apiBase = `https://api.github.com/repos/${plugin.owner}/${plugin.repo}`;
-      const branch = plugin.branch ?? "main";
-      const manifestPath = plugin.manifestPath ?? "manifest.json";
-
-      // Fetch plugin manifest
-      const manifestUrl = `${apiBase}/contents/${manifestPath}?ref=${branch}`;
-      const raw = await fetchFileContent(manifestUrl, token);
-      const pluginManifest = JSON.parse(raw);
-
-      // Tag each macro entry with plugin repo context for fetchFileContent
-      for (const entry of pluginManifest.macros ?? []) {
-        entry._pluginApiBase = apiBase;
-        entry._pluginBranch = branch;
-        entry._pluginToken = token;
-        entry.id = `${plugin.owner}/${plugin.repo}:${entry.id}`;
-      }
-
-      // Fetch plugin file tree for SHA caching
-      let pluginTree = null;
-      try {
-        const treeUrl = `${apiBase}/git/trees/${branch}?recursive=1&_=${Date.now()}`;
-        const treeRes = await fetch(treeUrl, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (treeRes.ok) {
-          const treeData = await treeRes.json();
-          pluginTree = {};
-          for (const e of treeData.tree ?? []) {
-            if (e.type === "blob") pluginTree[e.path] = e.sha;
-          }
-        }
-      } catch (err) {
-        console.warn(`Macro Loader | Plugin tree fetch failed for ${plugin.owner}/${plugin.repo}:`, err.message);
-      }
-
-      loaded.push({ manifest: pluginManifest, fileTree: pluginTree });
-      console.log(`Macro Loader | Plugin ${plugin.owner}/${plugin.repo} loaded (${pluginManifest.macros?.length ?? 0} macros).`);
-    } catch (err) {
-      console.error(`Macro Loader | Plugin ${plugin.owner}/${plugin.repo} failed:`, err);
-      ui.notifications.warn(`Plugin ${plugin.owner}/${plugin.repo} failed to load.`);
-    }
-  }
-
-  return loaded;
-}
-
-async function promptPluginSetup() {
-  return Dialog.prompt({
-    title: "🔧 Dev Macros — Private Repo",
-    content: `
-      <p style="margin-bottom:8px;">Enter the private repo and PAT for dev macros.
-      Leave blank to skip.</p>
-      <div style="display:grid; gap:6px;">
-        <label style="font-size:12px;">Repo owner/name (e.g. <code>MyUser/fvtt-dev</code>)
-          <input type="text" name="plugin-repo" style="width:100%" placeholder="owner/repo">
-        </label>
-        <label style="font-size:12px;">PAT with read access to this repo
-          <input type="password" name="plugin-token" style="width:100%" placeholder="ghp_...">
-        </label>
-        <label style="font-size:12px;">Branch (default: main)
-          <input type="text" name="plugin-branch" style="width:100%" placeholder="main">
-        </label>
-      </div>`,
-    callback: html => {
-      const repoStr = html.find("[name=plugin-repo]").val()?.trim();
-      if (!repoStr || !repoStr.includes("/")) return null;
-      const [owner, repo] = repoStr.split("/", 2);
-      const token = html.find("[name=plugin-token]").val()?.trim();
-      if (!token) return null;
-      const branch = html.find("[name=plugin-branch]").val()?.trim() || "main";
-      return { owner, repo, token, branch };
-    },
-    rejectClose: false,
-  });
 }
 
 // ─── GitHub API ──────────────────────────────────────────────────────────────

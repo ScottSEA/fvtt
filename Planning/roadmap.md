@@ -21,31 +21,21 @@ Plugin management dialog (add/remove/continue/skip), PAT audit (no token leakage
 ### Phase 2: Fighter Macros (2026-05-15)
 Action Surge (turn-start reminder), Second Wind (HP-gated healing reminder), Indomitable (failed save reroll button with Fighter level bonus). First non-Barbarian class validates architecture generalization.
 
+### Phase 3: Rogue Macros (2026-05-15)
+Sneak Attack (per-turn attack banner with dice scaling), Uncanny Dodge (reaction reminder on incoming hits), Evasion (DEX save result banner).
+
+### Phase 4: Paladin Macros (2026-05-15)
+Divine Smite (spell slot buttons on melee hits), Lay on Hands (turn-start healing reminder), Aura of Protection (CHA save bonus reminder for all owned characters).
+
+### Phase 5: Ranger Macros (2026-05-15)
+Hunter's Mark (concentration-gated damage reminder), Favored Foe (per-turn marking reminder with uses tracking).
+
+### Phase 6: Caster Macros (2026-05-15)
+Concentration Check (CON save DC reminder on damage, utility), Counterspell (reaction prompt on enemy spellcasting).
+
 ---
 
-## 🔜 Phase 3: Rogue Macros
-
-- [ ] **Sneak Attack** — Reminder/button on eligible attacks (advantage or adjacent ally)
-- [ ] **Uncanny Dodge** — Reaction reminder when hit by visible attacker
-- [ ] **Evasion** — Banner on DEX saves noting half/no damage
-
-## 📋 Phase 4: Paladin Macros
-
-- [ ] **Divine Smite** — Smite button on melee hits with spell slot selection
-- [ ] **Lay on Hands** — Quick-use dialog for healing pool
-- [ ] **Aura of Protection** — CHA save bonus reminder for nearby allies
-
-## 📋 Phase 5: Ranger Macros
-
-- [ ] **Hunter's Mark** — Track marked target, bonus damage reminder
-- [ ] **Favored Foe** — Concentration-free tracking alternative
-
-## 📋 Phase 6: Caster Macros (General)
-
-- [ ] **Concentration Check** — Auto-prompt CON save on damage while concentrating
-- [ ] **Counterspell** — Reaction prompt when enemy casts within 60 ft
-
-## 📋 Phase 7: Feat Macros
+## 🔜 Phase 7: Feat Macros
 
 - [ ] **Sentinel** — Reaction attack when adjacent creature attacks someone else
 - [ ] **Polearm Master** — Bonus action attack + OA on entering reach

@@ -6,6 +6,18 @@ All notable changes to the FVTT Macro Library.
 
 ---
 
+## [2026-05-15] — Phases 3-6: Rogue, Paladin, Ranger, Caster
+
+### Added
+- **Rogue:** Sneak Attack, Uncanny Dodge, Evasion macros
+- **Paladin:** Divine Smite (spell slot buttons), Lay on Hands, Aura of Protection
+- **Ranger:** Hunter's Mark (concentration-gated), Favored Foe (per-turn uses)
+- **Caster:** Concentration Check (utility), Counterspell (reaction prompt)
+- 10 new macros, 42 total in manifest
+- SDD spec folders for all four phases
+
+---
+
 ## [2026-05-15] — Phase 2: Fighter Macros
 
 ### Added

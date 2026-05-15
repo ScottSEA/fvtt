@@ -15,21 +15,12 @@ Bootstrap stub + loader split, manifest-driven install, SHA caching, FA icons, C
 ### Macro Generalization (2025-05-15)
 Removed all Tusk-specific assumptions. Added `isOwner` guards, prerequisite checks, and race flexibility across all macros.
 
+### Phase 1: Private Repo Hardening (2026-05-15)
+Plugin management dialog (add/remove/continue/skip), PAT audit (no token leakage), specific HTTP error diagnostics, non-fatal plugin errors, comprehensive dev-mode documentation.
+
 ---
 
-## 🔜 Phase 1: Private Repo Hardening (Dev Mode)
-
-**Goal:** Make the Ctrl+Shift plugin system production-ready for personal/private macro development.
-
-The loader already has plugin scaffolding (PAT prompt, manifest merging, SHA caching). Harden and complete:
-
-- [ ] Verify `promptPluginSetup()` persistence across browser reloads
-- [ ] Add "Manage Plugins" option on subsequent dev-mode runs (add/remove/list)
-- [ ] Audit PAT handling — never logged, never stored in Macro documents
-- [ ] Error handling for unreachable repos and invalid PATs (graceful fallback)
-- [ ] Inline help or README section documenting dev-mode workflow
-
-## 📋 Phase 2: Fighter Macros
+## 🔜 Phase 2: Fighter Macros
 
 **Goal:** First non-Barbarian class. Validates that the architecture generalizes cleanly.
 

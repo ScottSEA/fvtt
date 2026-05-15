@@ -4,9 +4,26 @@ All notable changes to the FVTT Macro Library.
 
 ## [Unreleased]
 
+---
+
+## [2026-05-15] — Phase 1: Private Repo Hardening
+
 ### Added
-- SDD constitution: `mission.md`, `tech-stack.md`, `roadmap.md`
-- Expansion plan for new classes, feats, items, and utilities
+- Plugin management dialog for subsequent dev-mode runs (add/remove/continue/skip)
+- Specific HTTP error diagnostics (401 → invalid PAT, 403 → access/SSO/policy, 404 → not found or no visibility)
+- Malformed manifest handling (bad JSON, missing macros array)
+- Comprehensive dev-mode documentation in bootstrap stub header
+- Phase 1 SDD spec folder (plan, requirements, validation)
+
+### Changed
+- All plugin/loader errors are non-fatal — loader always proceeds with public macros
+- All console.error calls now log `err.message` instead of full error objects (prevents PAT leakage)
+- Plugin logic fully owned by bootstrap stub; loader.js has zero plugin awareness
+
+### Security
+- PAT is session-only (game[] memory), never persisted to disk/DB/logs
+- PAT input uses `type="password"` in all dialogs
+- Private macro source IS persisted for manual macros (private for distribution, not secret)
 
 ---
 

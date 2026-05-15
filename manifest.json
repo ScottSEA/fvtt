@@ -424,6 +424,149 @@
       }
     },
     {
+      "id": "cloak-of-displacement",
+      "name": "Cloak of Displacement",
+      "path": "items/cloak-of-displacement-macro.js",
+      "description": "Disadvantage reminder on turn start and incoming attack banner for Cloak of Displacement",
+      "category": "item",
+      "autoExecute": true,
+      "requires": {
+        "item": "Cloak of Displacement"
+      }
+    },
+    {
+      "id": "ring-of-spell-storing",
+      "name": "Ring of Spell Storing",
+      "path": "items/ring-of-spell-storing-macro.js",
+      "description": "Turn-start reminder when Ring of Spell Storing has stored spells ready to cast",
+      "category": "item",
+      "autoExecute": true,
+      "requires": {
+        "item": "Ring of Spell Storing"
+      }
+    },
+    {
+      "id": "winged-boots",
+      "name": "Winged Boots",
+      "path": "items/winged-boots-macro.js",
+      "description": "Once-per-combat reminder of flying speed from Winged Boots",
+      "category": "item",
+      "autoExecute": true,
+      "requires": {
+        "item": "Winged Boots"
+      }
+    },
+    {
+      "id": "magic-shield",
+      "name": "Magic Shield",
+      "path": "items/magic-shield-macro.js",
+      "description": "Once-per-combat reminder that a +1/+2/+3 shield AC bonus is applied",
+      "category": "item",
+      "autoExecute": true,
+      "requires": {
+        "item": "Shield"
+      }
+    },
+    {
+      "id": "flame-tongue",
+      "name": "Flame Tongue",
+      "path": "items/flame-tongue-macro.js",
+      "description": "Banner reminder for +2d6 fire damage on Flame Tongue attack rolls",
+      "category": "item",
+      "autoExecute": true,
+      "requires": {
+        "item": "Flame Tongue"
+      }
+    },
+    {
+      "id": "sentinel",
+      "name": "Sentinel",
+      "path": "feats/sentinel-macro.js",
+      "description": "Reaction prompt when enemy melee attacks an ally near your Sentinel character",
+      "category": "feat",
+      "autoExecute": true,
+      "requires": {
+        "feat": "Sentinel"
+      }
+    },
+    {
+      "id": "polearm-master",
+      "name": "Polearm Master",
+      "path": "feats/polearm-master-macro.js",
+      "description": "Bonus Action reminder for opposite-end polearm attack (1d4 bludgeoning)",
+      "category": "feat",
+      "autoExecute": true,
+      "requires": {
+        "feat": "Polearm Master"
+      }
+    },
+    {
+      "id": "shield-master",
+      "name": "Shield Master",
+      "path": "feats/shield-master-macro.js",
+      "description": "Bonus Action shove reminder after attacking with a shield equipped",
+      "category": "feat",
+      "autoExecute": true,
+      "requires": {
+        "feat": "Shield Master"
+      }
+    },
+    {
+      "id": "war-caster",
+      "name": "War Caster",
+      "path": "feats/war-caster-macro.js",
+      "description": "Turn-start reminder that you can cast a spell instead of opportunity attack",
+      "category": "feat",
+      "autoExecute": true,
+      "requires": {
+        "feat": "War Caster"
+      }
+    },
+    {
+      "id": "savage-attacker",
+      "name": "Savage Attacker",
+      "path": "feats/savage-attacker-macro.js",
+      "description": "Reroll reminder on melee weapon damage rolls (once per turn)",
+      "category": "feat",
+      "autoExecute": true,
+      "requires": {
+        "feat": "Savage Attacker"
+      }
+    },
+    {
+      "id": "resilient",
+      "name": "Resilient",
+      "path": "feats/resilient-macro.js",
+      "description": "Informational banner on saving throws reminding of Resilient proficiency",
+      "category": "feat",
+      "autoExecute": true,
+      "requires": {
+        "feat": "Resilient"
+      }
+    },
+    {
+      "id": "alert",
+      "name": "Alert",
+      "path": "feats/alert-macro.js",
+      "description": "Combat-start reminder about Initiative proficiency bonus and surprise immunity",
+      "category": "feat",
+      "autoExecute": true,
+      "requires": {
+        "feat": "Alert"
+      }
+    },
+    {
+      "id": "tough",
+      "name": "Tough",
+      "path": "feats/tough-macro.js",
+      "description": "Combat-start note showing bonus HP from Tough feat (2 × character level)",
+      "category": "feat",
+      "autoExecute": true,
+      "requires": {
+        "feat": "Tough"
+      }
+    },
+    {
       "id": "token-dashboard",
       "name": "Token Dashboard",
       "path": "utilities/token-dashboard-macro.js",
@@ -485,6 +628,42 @@
       "description": "Shift+click macros in directory to execute immediately",
       "category": "utility",
       "autoExecute": true,
+      "requires": {}
+    },
+    {
+      "id": "combat-tracker",
+      "name": "Combat Tracker Enhancement",
+      "path": "utilities/combat-tracker-macro.js",
+      "description": "Whispered turn summary with round, current combatant, next 3, HP status, and conditions",
+      "category": "utility",
+      "autoExecute": true,
+      "requires": {}
+    },
+    {
+      "id": "rest-manager",
+      "name": "Rest Manager",
+      "path": "utilities/rest-manager-macro.js",
+      "description": "Short Rest / Long Rest dialog with recovery summary",
+      "category": "utility",
+      "autoExecute": false,
+      "requires": {}
+    },
+    {
+      "id": "condition-reference",
+      "name": "Condition Reference",
+      "path": "utilities/condition-reference-macro.js",
+      "description": "Searchable reference for all standard 5e conditions",
+      "category": "utility",
+      "autoExecute": false,
+      "requires": {}
+    },
+    {
+      "id": "loot-roller",
+      "name": "Loot Roller",
+      "path": "utilities/loot-roller-macro.js",
+      "description": "Roll simplified treasure tables by CR and treasure type",
+      "category": "utility",
+      "autoExecute": false,
       "requires": {}
     }
   ]

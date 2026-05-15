@@ -18,17 +18,12 @@ Removed all Tusk-specific assumptions. Added `isOwner` guards, prerequisite chec
 ### Phase 1: Private Repo Hardening (2026-05-15)
 Plugin management dialog (add/remove/continue/skip), PAT audit (no token leakage), specific HTTP error diagnostics, non-fatal plugin errors, comprehensive dev-mode documentation.
 
+### Phase 2: Fighter Macros (2026-05-15)
+Action Surge (turn-start reminder), Second Wind (HP-gated healing reminder), Indomitable (failed save reroll button with Fighter level bonus). First non-Barbarian class validates architecture generalization.
+
 ---
 
-## 🔜 Phase 2: Fighter Macros
-
-**Goal:** First non-Barbarian class. Validates that the architecture generalizes cleanly.
-
-- [ ] **Action Surge** — Reminder on turn start when available
-- [ ] **Second Wind** — Bonus action healing reminder when below 50% HP
-- [ ] **Indomitable** — Reroll failed save button on saving throw failures
-
-## 📋 Phase 3: Rogue Macros
+## 🔜 Phase 3: Rogue Macros
 
 - [ ] **Sneak Attack** — Reminder/button on eligible attacks (advantage or adjacent ally)
 - [ ] **Uncanny Dodge** — Reaction reminder when hit by visible attacker

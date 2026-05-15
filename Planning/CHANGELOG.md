@@ -6,6 +6,17 @@ All notable changes to the FVTT Macro Library.
 
 ---
 
+## [2026-05-15] — Phase 2: Fighter Macros
+
+### Added
+- `action-surge-macro.js`: whispered reminder on combat turn start when uses remain
+- `second-wind-macro.js`: reminder when below 50% HP with `1d10 + level` healing formula
+- `indomitable-macro.js`: reroll button on failed saves with Fighter level bonus, use consumption
+- Phase 2 SDD spec folder (plan, requirements, validation)
+- Three new manifest entries with `class: fighter` prerequisites
+
+---
+
 ## [2026-05-15] — Phase 1: Private Repo Hardening
 
 ### Added

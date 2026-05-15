@@ -23,9 +23,8 @@ const ACTOR_KEY = "_ghLoaderActorId";
 const PLUGIN_KEY = "_ghLoaderPlugins";
 const FA_SVG_BASE = "https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid";
 
-// Detect Ctrl+Shift at launch time for dev mode
-const DEV_MODE = game.keyboard?.isModifierActive(KeyboardManager.MODIFIER_KEYS.CONTROL)
-              && game.keyboard?.isModifierActive(KeyboardManager.MODIFIER_KEYS.SHIFT);
+// Dev mode flag set by bootstrap stub before the async fetch
+const DEV_MODE = !!game._ghLoaderDevMode;
 
 if (DEV_MODE) console.log("Macro Loader | Dev mode activated (Ctrl+Shift held).");
 

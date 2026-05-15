@@ -15,6 +15,11 @@ const LOADER_FILE = "loader.js";
 
 (async () => {
   try {
+    // Detect Ctrl+Shift at launch time for dev mode (must be checked here,
+    // before the async fetch clears the modifier key state)
+    game._ghLoaderDevMode = game.keyboard?.isModifierActive(KeyboardManager.MODIFIER_KEYS.CONTROL)
+                         && game.keyboard?.isModifierActive(KeyboardManager.MODIFIER_KEYS.SHIFT);
+
     const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${LOADER_FILE}?ref=${BRANCH}&_=${Date.now()}`;
     const response = await fetch(url, {
       headers: { Accept: "application/vnd.github.v3.raw" },

@@ -274,6 +274,42 @@
       }
     },
     {
+      "id": "action-surge",
+      "name": "Action Surge",
+      "path": "classes/fighter/action-surge-macro.js",
+      "description": "Reminder on turn start when Action Surge has uses remaining",
+      "category": "class",
+      "autoExecute": true,
+      "requires": {
+        "class": "fighter",
+        "feat": "Action Surge"
+      }
+    },
+    {
+      "id": "second-wind",
+      "name": "Second Wind",
+      "path": "classes/fighter/second-wind-macro.js",
+      "description": "Bonus action healing reminder when below 50% HP and uses remain",
+      "category": "class",
+      "autoExecute": true,
+      "requires": {
+        "class": "fighter",
+        "feat": "Second Wind"
+      }
+    },
+    {
+      "id": "indomitable",
+      "name": "Indomitable",
+      "path": "classes/fighter/indomitable-macro.js",
+      "description": "Reroll button on failed saving throws with Fighter level bonus",
+      "category": "class",
+      "autoExecute": true,
+      "requires": {
+        "class": "fighter",
+        "feat": "Indomitable"
+      }
+    },
+    {
       "id": "token-dashboard",
       "name": "Token Dashboard",
       "path": "utilities/token-dashboard-macro.js",

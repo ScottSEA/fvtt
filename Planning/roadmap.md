@@ -33,33 +33,20 @@ Hunter's Mark (concentration-gated damage reminder), Favored Foe (per-turn marki
 ### Phase 6: Caster Macros (2026-05-15)
 Concentration Check (CON save DC reminder on damage, utility), Counterspell (reaction prompt on enemy spellcasting).
 
+### Phase 7: Feat Macros (2026-05-15)
+Sentinel, Polearm Master, Shield Master, War Caster, Savage Attacker, Resilient, Alert, Tough.
+
+### Phase 8: Item Macros (2026-05-15)
+Cloak of Displacement, Ring of Spell Storing, Winged Boots, Magic Shield, Flame Tongue.
+
+### Phase 9: Utility Macros (2026-05-15)
+Combat Tracker Enhancement, Rest Manager, Condition Reference, Loot Roller.
+
 ---
 
-## 🔜 Phase 7: Feat Macros
+## 🎉 All Phases Complete
 
-- [ ] **Sentinel** — Reaction attack when adjacent creature attacks someone else
-- [ ] **Polearm Master** — Bonus action attack + OA on entering reach
-- [ ] **Shield Master** — Bonus action shove after Attack action
-- [ ] **War Caster** — Cast spell as opportunity attack reminder
-- [ ] **Savage Attacker** — Reroll melee damage once per turn
-- [ ] **Resilient** — Proficiency bonus on saves for chosen ability
-- [ ] **Alert** — Initiative bonus + can't-be-surprised note
-- [ ] **Tough** — HP increase tracking (informational)
-
-## 📋 Phase 8: Item Macros
-
-- [ ] **Cloak of Displacement** — Disadvantage on attacks reminder, resets each turn
-- [ ] **Ring of Spell Storing** — Track stored spells, cast buttons
-- [ ] **Winged Boots** — Flight duration tracker
-- [ ] **Shield +1/+2/+3** — AC reminder (informational)
-- [ ] **Flame Tongue** — Bonus fire damage reminder when activated
-
-## 📋 Phase 9: Utility Macros
-
-- [ ] **Combat Tracker Enhancement** — Turn order with initiative and conditions
-- [ ] **Rest Manager** — Long/short rest with auto Hit Dice, spell slots, features
-- [ ] **Condition Reference** — Quick lookup panel for condition rules
-- [ ] **Loot Roller** — Random treasure table roller from DMG
+59 macros across 5 classes, 12 feats, 10 items, and 11 utilities.
 
 ---
 

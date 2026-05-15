@@ -6,6 +6,17 @@ All notable changes to the FVTT Macro Library.
 
 ---
 
+## [2026-05-15] — Phases 7-9: Feats, Items, Utilities
+
+### Added
+- **Feats (8):** Sentinel, Polearm Master, Shield Master, War Caster, Savage Attacker, Resilient, Alert, Tough
+- **Items (5):** Cloak of Displacement, Ring of Spell Storing, Winged Boots, Magic Shield, Flame Tongue
+- **Utilities (4):** Combat Tracker Enhancement, Rest Manager, Condition Reference, Loot Roller
+- 17 new macros, 59 total in manifest
+- SDD spec folders for all three phases
+
+---
+
 ## [2026-05-15] — Phases 3-6: Rogue, Paladin, Ranger, Caster
 
 ### Added
